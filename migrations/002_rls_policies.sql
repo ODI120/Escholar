@@ -1,6 +1,6 @@
 -- 002_rls_policies.sql
 -- Secure Row Level Security (RLS) policy examples for Escholar
--- INTENT: Allow platform admins and the `service_role` to manage/read records.
+-- INTENT: Allow authenticated users and platform admins to manage/read records.
 -- Review and adapt to your authentication model before applying in production.
 
 -- Drop existing example policies (idempotent)
@@ -10,22 +10,19 @@ DROP POLICY IF EXISTS "students_update_owner_or_admin" ON public.students;
 DROP POLICY IF EXISTS "payments_select_owner_or_admin" ON public.payments;
 DROP POLICY IF EXISTS "payments_insert_owner_or_admin" ON public.payments;
 
--- Students: allow SELECT/INSERT/UPDATE only for admins or the service role
-CREATE POLICY IF NOT EXISTS "students_select_admins_or_service" ON public.students
+-- Students: allow SELECT for authenticated users, INSERT/UPDATE only for admins or service role
+CREATE POLICY "students_select_authenticated" ON public.students
   FOR SELECT
-  USING (
-    auth.role() = 'service_role'
-    OR EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id::text = auth.uid()::text)
-  );
+  USING (auth.role() = 'authenticated');
 
-CREATE POLICY IF NOT EXISTS "students_insert_admins_or_service" ON public.students
+CREATE POLICY "students_insert_admins_or_service" ON public.students
   FOR INSERT
   WITH CHECK (
     auth.role() = 'service_role'
     OR EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id::text = auth.uid()::text)
   );
 
-CREATE POLICY IF NOT EXISTS "students_update_admins_or_service" ON public.students
+CREATE POLICY "students_update_admins_or_service" ON public.students
   FOR UPDATE
   USING (
     auth.role() = 'service_role'
@@ -36,15 +33,12 @@ CREATE POLICY IF NOT EXISTS "students_update_admins_or_service" ON public.studen
     OR EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id::text = auth.uid()::text)
   );
 
--- Payments: allow SELECT/INSERT for admins or service role
-CREATE POLICY IF NOT EXISTS "payments_select_admins_or_service" ON public.payments
+-- Payments: allow SELECT for authenticated users, INSERT only for admins or service role
+CREATE POLICY "payments_select_authenticated" ON public.payments
   FOR SELECT
-  USING (
-    auth.role() = 'service_role'
-    OR EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id::text = auth.uid()::text)
-  );
+  USING (auth.role() = 'authenticated');
 
-CREATE POLICY IF NOT EXISTS "payments_insert_admins_or_service" ON public.payments
+CREATE POLICY "payments_insert_admins_or_service" ON public.payments
   FOR INSERT
   WITH CHECK (
     auth.role() = 'service_role'
