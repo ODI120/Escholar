@@ -12,7 +12,7 @@
     </template>
 
     <!-- Stats Cards -->
-    <div class="stats-grid mb-5">
+    <div class="stats">
       <div class="stat-card">
         <div class="stat-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -213,129 +213,134 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stat-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  transition: all var(--transition-fast);
-}
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all var(--transition-fast);
+  }
+  .stats{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    /* box-shadow: var(--shadow-sm); */
+    border: 1px solid var(--color-primary);
+  }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  /* box-shadow: var(--shadow-sm); */
-  border: 1px solid var(--color-primary);
-}
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+  }
 
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(34, 197, 94, 0.1);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
-}
+  .stat-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
 
-.stat-icon svg {
-  width: 24px;
-  height: 24px;
-  stroke: currentColor;
-  stroke-width: 2;
-}
+  .stat-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
 
-.stat-content h3 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0 0;
+  }
 
-.stat-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  margin: 0.25rem 0 0 0;
-}
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+  }
 
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-}
+  .card-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-primary);
+    padding: 1.5rem;
+  }
 
-.card-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-primary);
-  padding: 1.5rem;
-}
+  .card-title {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
 
-.card-title {
-  color: var(--text-primary);
-  font-weight: 600;
-}
+  .card-body {
+    padding: 1.5rem;
+  }
 
-.card-body {
-  padding: 1.5rem;
-}
+  .table {
+    color: var(--text-primary);
+  }
 
-.table {
-  color: var(--text-primary);
-}
+  .table th {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 1rem;
+  }
 
-.table th {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-primary);
-  color: var(--text-secondary);
-  font-weight: 600;
-  padding: 1rem;
-}
+  .table td {
+    border-bottom: 1px solid var(--border-primary);
+    padding: 1rem;
+    vertical-align: middle;
+  }
 
-.table td {
-  border-bottom: 1px solid var(--border-primary);
-  padding: 1rem;
-  vertical-align: middle;
-}
+  .avatar {
+    width: 40px;
+    height: 40px;
+  }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-}
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+  .avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.125rem;
+  }
 
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1.125rem;
-}
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-full);
+  }
 
-.badge {
-  font-size: 0.75rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius-full);
-}
+  .btn-outline-primary {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
 
-.btn-outline-primary {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.btn-outline-primary:hover {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
+  .btn-outline-primary:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
 </style>

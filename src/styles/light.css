@@ -2,7 +2,7 @@
 
 /* BACKGROUNDS */
 
---bg-primary: #F9FAFB;
+--bg-primary: #f7faf8;
 --bg-secondary: #FFFFFF;
 --bg-tertiary: #F3F4F6;
 
@@ -13,19 +13,21 @@
 
 /* BRAND */
 
---color-primary: #22C55E;
+--color-primary: #039999;
+/* --color-primary: #22C55E; */
 --color-primary-hover: #16A34A;
 --color-primary-soft: #4ADE80;
 
 /* TEXT */
 
---text-primary: #111827;
+/* --text-primary: #111827; */
+--text-primary: #212121;
 --text-secondary: #4B5563;
 --text-muted: #6B7280;
 
 /* BORDERS */
 
---border-primary: #E5E7EB;
+--border-primary: #f0f3f1;
 --border-secondary: #D1D5DB;
 
 /* CARD */
