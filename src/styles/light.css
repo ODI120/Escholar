@@ -1,0 +1,41 @@
+.light-mode {
+
+/* BACKGROUNDS */
+
+--bg-primary: #F9FAFB;
+--bg-secondary: #FFFFFF;
+--bg-tertiary: #F3F4F6;
+
+/* SURFACE */
+
+--surface: #FFFFFF;
+--surface-hover: #F3F4F6;
+
+/* BRAND */
+
+--color-primary: #22C55E;
+--color-primary-hover: #16A34A;
+--color-primary-soft: #4ADE80;
+
+/* TEXT */
+
+--text-primary: #111827;
+--text-secondary: #4B5563;
+--text-muted: #6B7280;
+
+/* BORDERS */
+
+--border-primary: #E5E7EB;
+--border-secondary: #D1D5DB;
+
+/* CARD */
+
+--card-bg: #FFFFFF;
+--card-border: #E5E7EB;
+
+/* INPUT */
+
+--input-bg: #FFFFFF;
+--input-border: #D1D5DB;
+
+}

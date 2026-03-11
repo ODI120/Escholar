@@ -1,0 +1,42 @@
+:root {
+
+/* FONT FAMILY */
+
+--font-primary: "Inter", sans-serif;
+--font-heading: "Space Grotesk", sans-serif;
+
+/* FONT SIZE */
+
+--text-xs: 12px;
+--text-sm: 14px;
+--text-base: 16px;
+--text-md: 18px;
+--text-lg: 20px;
+--text-xl: 24px;
+--text-2xl: 30px;
+--text-3xl: 36px;
+--text-4xl: 48px;
+
+/* FONT WEIGHT */
+
+--font-normal: 400;
+--font-medium: 500;
+--font-semibold: 600;
+--font-bold: 700;
+
+}
+
+body {
+
+font-family: var(--font-primary);
+font-size: var(--text-base);
+color: var(--text-primary);
+background: var(--bg-primary);
+
+}
+
+h1,h2,h3,h4,h5 {
+
+font-family: var(--font-heading);
+
+}

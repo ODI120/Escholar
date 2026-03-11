@@ -1,0 +1,41 @@
+:root {
+
+/* BACKGROUNDS */
+
+--bg-primary: #0B0F19;
+--bg-secondary: #111827;
+--bg-tertiary: #1F2937;
+
+/* SURFACE */
+
+--surface: #111827;
+--surface-hover: #1F2937;
+
+/* BRAND */
+
+--color-primary: #22C55E;
+--color-primary-hover: #16A34A;
+--color-primary-soft: #4ADE80;
+
+/* TEXT */
+
+--text-primary: #E5E7EB;
+--text-secondary: #9CA3AF;
+--text-muted: #6B7280;
+
+/* BORDERS */
+
+--border-primary: #1F2937;
+--border-secondary: #374151;
+
+/* CARD */
+
+--card-bg: #111827;
+--card-border: #1F2937;
+
+/* INPUT */
+
+--input-bg: #0B0F19;
+--input-border: #374151;
+
+}

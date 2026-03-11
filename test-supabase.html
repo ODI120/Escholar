@@ -1,0 +1,31 @@
+// Test Supabase connection
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabaseUrl = 'https://rhpwrkfwcocqkvjdscyd.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocHdya2Z3Y29jcWt2amRzY3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNTQzMjgsImV4cCI6MjA4ODczMDMyOH0.rVVpg3gYMdxym9MfpzUhHiyQWY73mhWpsLm683WR73I'
+
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function testConnection() {
+  try {
+    console.log('Testing Supabase connection...')
+
+    // Test basic connection
+    const { data, error } = await supabase.auth.getSession()
+
+    if (error) {
+      console.error('Connection error:', error)
+      return false
+    }
+
+    console.log('✅ Supabase connection successful!')
+    console.log('Session data:', data)
+    return true
+
+  } catch (err) {
+    console.error('❌ Connection failed:', err.message)
+    return false
+  }
+}
+
+testConnection()
