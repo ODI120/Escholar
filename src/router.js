@@ -67,15 +67,16 @@ const router = createRouter({
 
 // Navigation guard for authentication
 router.beforeEach((to, from, next) => {
-  // Enable auth for testing signup
   const isAuthenticated = localStorage.getItem('supabase.auth.token')
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
   if (requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if ((to.path === '/login' || to.path === '/signup') && isAuthenticated) {
+  } else if (to.path === '/login' && isAuthenticated) {
+    // if already signed in, prevent revisiting login
     next('/dashboard')
   } else {
+    // allow signup even when authenticated (for creating additional admins)
     next()
   }
 

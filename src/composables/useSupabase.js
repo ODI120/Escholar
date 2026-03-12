@@ -10,10 +10,17 @@ export const isMock = !supabaseUrl || supabaseUrl.includes('placeholder')
 
 // Auth helpers
 export const useSupabaseAuth = () => {
-  const signUp = async (email, password) => {
+  const signUp = async (email, password, metadata = {}) => {
     if (isMock) return { data: null, error: { message: 'Mock mode: signup not available' } }
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      // metadata is stored in user_metadata by default
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: metadata
+        }
+      })
       return { data, error }
     } catch (err) {
       return { data: null, error: { message: err.message || 'Supabase signUp failed' } }

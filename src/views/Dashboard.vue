@@ -277,7 +277,7 @@ onMounted(() => {
     border-bottom: 1px solid var(--border-primary);
     padding: 1.5rem;
   }
-
+ 
   .card-title {
     color: var(--text-primary);
     font-weight: 600;

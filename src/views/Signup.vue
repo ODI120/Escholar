@@ -4,7 +4,22 @@
       <h2 class="auth-title">Escholar</h2>
       <p class="auth-subtitle">Create Admin Account</p>
 
-      <form @submit.prevent="handleSignup">
+      <div v-if="isAuthenticated" class="alert alert-info">
+        You are currently signed in. <button class="btn btn-link p-0" @click="handleLogout">Logout</button> to add another admin.
+      </div>
+      <form v-if="!isAuthenticated" @submit.prevent="handleSignup">
+        <div class="form-group">
+          <label class="form-label" for="firstName">First Name</label>
+          <input
+            type="text"
+            id="firstName"
+            v-model="form.firstName"
+            required
+            placeholder="Your first name"
+            class="input"
+          />
+        </div>
+
         <div class="form-group">
           <label class="form-label" for="email">Email</label>
           <input
@@ -46,7 +61,7 @@
         <button
           type="submit"
           class="btn btn-primary"
-          :disabled="loading || form.password !== form.confirmPassword"
+          :disabled="loading || !form.firstName || form.password !== form.confirmPassword"
         >
           {{ loading ? 'Creating account...' : 'Create Account' }}
         </button>
@@ -87,9 +102,11 @@ import { useRouter } from 'vue-router'
 import { useSupabaseAuth } from '../composables/useSupabase.js'
 
 const router = useRouter()
-const { signUp } = useSupabaseAuth()
+const { signUp, signOut } = useSupabaseAuth()
+const isAuthenticated = ref(!!localStorage.getItem('supabase.auth.token'))
 
 const form = ref({
+  firstName: '',
   email: '',
   password: '',
   confirmPassword: ''
@@ -110,20 +127,32 @@ const handleSignup = async () => {
   success.value = false
 
   try {
-    const { data, error: signUpError } = await signUp(form.value.email, form.value.password)
+    // include first name as metadata for display
+    const metadata = { full_name: form.value.firstName, first_name: form.value.firstName }
+    const { data, error: signUpError } = await signUp(
+      form.value.email,
+      form.value.password,
+      metadata
+    )
 
     if (signUpError) {
       error.value = signUpError.message
     } else {
       success.value = true
       // Clear form
-      form.value = { email: '', password: '', confirmPassword: '' }
+      form.value = { firstName: '', email: '', password: '', confirmPassword: '' }
     }
   } catch (err) {
     error.value = 'An unexpected error occurred'
   } finally {
     loading.value = false
   }
+}
+
+const handleLogout = async () => {
+  await signOut()
+  isAuthenticated.value = false
+  router.push('/login')
 }
 
 const testConnection = async () => {
