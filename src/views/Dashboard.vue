@@ -72,9 +72,10 @@
     </div>
 
     <!-- Recent Students -->
-    <div class="card">
+    <div class="cards">
       <div class="card-header">
-        <h5 class="card-title mb-0">Recent Students</h5>
+        <h5 class="card-title">Recent Activities</h5>
+        <router-link to="/admin/students" class="view-all">View All</router-link>
       </div>
       <div class="card-body">
         <div v-if="loading" class="text-center py-4">
@@ -87,54 +88,55 @@
         </div>
 
         <div v-else class="table-responsive">
-          <table class="table table-hover">
-            <thead>
+          <div class="table table-hover">
+            <!-- <thead>
               <tr>
+                
                 <th>Student</th>
                 <th>School</th>
                 <th>Level</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
-            </thead>
-            <tbody>
-              <tr v-for="student in recentStudents" :key="student.id">
-                <td>
-                  <div class="d-flex align-items-center">
-                    <div class="avatar me-3">
+            </thead> -->
+            
+              <router-link :to="`/students/${student.id}`" class="row" v-for="student in recentStudents" :key="student.id">
+                <div class="item">
+                  <div class="avatar-container">
+                    <div class="avatar">
                       <img
                         v-if="student.profile_picture"
                         :src="student.profile_picture"
                         :alt="student.full_name"
-                        class="rounded-circle"
+                        
                       >
                       <div v-else class="avatar-placeholder rounded-circle">
                         {{ student.full_name.charAt(0).toUpperCase() }}
                       </div>
                     </div>
-                    <div>
-                      <div class="fw-semibold">{{ student.full_name }}</div>
-                      <small class="text-muted">
-                        {{ student.email || student.phone_number || '' }}
+                    <div class="info">
+                      <div class="name">{{ student.full_name }}</div>
+                      <small class="level">
+                        {{ student.school }} | {{ student.level }}L
                       </small>
                     </div>
                   </div>
-                </td>
-                <td>{{ student.school }}</td>
-                <td>{{ student.level }}</td>
-                <td>
+                </div>
+                <!-- <div class="item">{{ student.school }}</div>
+                <div class="item">{{ student.level }}</div> -->
+                <!-- <div class="item">
                   <span class="badge" :class="getStatusBadgeClass(student.status)">
                     {{ student.status }}
                   </span>
-                </td>
-                <td>
+                </div> -->
+                <!-- <div class="item">
                   <router-link :to="`/students/${student.id}`" class="btn btn-sm btn-outline-primary">
                     View
                   </router-link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div> -->
+              </router-link>
+            
+          </div>
         </div>
       </div>
     </div>
@@ -248,29 +250,7 @@ onMounted(() => {
     color: var(--text-muted);
     margin: 0;
   }
-
-  .page-header .page-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .page-header .page-header-actions .btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .page-header .page-header-actions .btn svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .page-header .page-header-actions .btn:hover {
-    background: var(--color-primary);
-    color: var(--text-primary);
-  }
-  
+/* ---------------------------------------- */
   .stat-card {
     background: var(--card-bg);
     border-radius: var(--radius-lg);
@@ -290,9 +270,6 @@ onMounted(() => {
     gap: 1rem;
     box-sizing: border-box;
   }
-  /* .stat-card:hover {
-    border: 1px solid var(--color-primary);
-  } */
 
   .stat-icon {
     width: 48px;
@@ -342,14 +319,6 @@ onMounted(() => {
     }
   }
   
-
-  /* .stat-icon svg {
-    width: 24px;
-    height: 24px;
-    stroke: currentColor;
-    stroke-width: 2;
-  } */
-
   .stat-content h3 {
     font-size: 2rem;
     font-weight: 500;
@@ -363,54 +332,58 @@ onMounted(() => {
     margin: 0.25rem 0 0 0;
   }
 
-  .card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: var(--radius-lg);
-  }
+/* ------------- */
+a{
+  text-decoration: none;
+  color: var(--text-primary);
+}
+  
 
-  .card-header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border-primary);
-    padding: 1.5rem;
-  }
- 
-  .card-title {
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-
-  .card-body {
-    padding: 1.5rem;
-  }
-
+/* ------------- */
   .table {
     color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+    gap: .4rem;
   }
 
-  .table th {
-    background: var(--surface);
+  .table .row{
     border-bottom: 1px solid var(--border-primary);
-    color: var(--text-secondary);
-    font-weight: 600;
-    padding: 1rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--bg-primary);
+    padding: .5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-primary);
   }
 
-  .table td {
-    border-bottom: 1px solid var(--border-primary);
-    padding: 1rem;
-    vertical-align: middle;
+  .avatar-container{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
   }
-
   .avatar {
-    width: 40px;
-    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #038a5229;
+    overflow: hidden;
+    gap: 1rem;
+    border-radius: 4px;
+    box-sizing: border-box;
+
   }
 
   .avatar img {
-    width: 100%;
-    height: 100%;
+    width: 50px;
+    height: 50px;
     object-fit: cover;
+    border-radius: 8px;
   }
 
   .avatar-placeholder {
@@ -421,23 +394,23 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    font-size: 1.125rem;
+    font-weight: 400;
+    font-size: .4rem;
   }
 
-  .badge {
-    font-size: 0.75rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: var(--radius-full);
-  }
+.info{
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+.name{
+  font-weight: 600;
+  font-size: 1rem;
+}
+.level{
+  font-weight: 400;
+  font-size: .8rem;
+  color: var(--text-secondary);
+}
 
-  .btn-outline-primary {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-  }
-
-  .btn-outline-primary:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-  }
 </style>
