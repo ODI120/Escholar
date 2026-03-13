@@ -321,7 +321,7 @@ button {
 .logo-wrapper {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  /* gap: 0.75rem; */
   overflow: hidden;
 }
 
@@ -412,14 +412,14 @@ button {
 }
 
 .nav-link:hover {
-  background-color: var(--surface-hover, #f3f4f6);
+  background-color: #6B59FF10;
   color: var(--color-primary, #0d9488);
   transform: translateX(3px);
 }
 
 .nav-link.active {
-  background-color: rgba(13, 148, 136, 0.08); /* Fallback tint */
-  color: var(--color-primary, #0d9488);
+  background-color: #6B59FF10; /* Fallback tint */
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -531,10 +531,10 @@ button {
 
 .page-title {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary, #111827);
   margin: 0;
-  margin-left: 0.5rem;
+  /* margin-left: 0.5rem; */
 }
 
 .notification-btn {

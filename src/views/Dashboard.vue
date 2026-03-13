@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <template #header-actions>
+    <!-- <template #header-actions>
       <button class="btn btn-primary" @click="refreshData">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <polyline points="23,4 23,10 17,10"/>
@@ -9,16 +9,30 @@
         </svg>
         Refresh
       </button>
-    </template>
+    </template> -->
+
+    <div class="page-header">
+      <div class="page-header-content">
+        <h1>Overview summary</h1>
+        <p>Welcome back, here's what's happening with your scholarship program</p>
+      </div>
+      <!-- <div class="page-header-actions">
+            <button class="btn btn-primary" @click="refreshData">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polyline points="23,4 23,10 17,10"/>
+                    <polyline points="1,20 1,14 7,14"/>
+                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4l-4.64,4.36A9,9,0,0,1,3.51,15"/>
+                </svg>
+                Refresh
+            </button>
+        </div> -->
+    </div>
 
     <!-- Stats Cards -->
     <div class="stats">
       <div class="stat-card">
         <div class="stat-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+          <i class="bi bi-people"></i>
         </div>
         <div class="stat-content">
           <h3 class="stat-number">{{ stats.totalStudents }}</h3>
@@ -28,12 +42,7 @@
 
       <div class="stat-card">
         <div class="stat-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+          <i class="bi bi-mortarboard"></i>
         </div>
         <div class="stat-content">
           <h3 class="stat-number">{{ stats.graduatedStudents }}</h3>
@@ -43,10 +52,7 @@
 
       <div class="stat-card">
         <div class="stat-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-          </svg>
+          <i class="bi bi-book"></i>
         </div>
         <div class="stat-content">
           <h3 class="stat-number">{{ stats.nonGraduated }}</h3>
@@ -56,9 +62,7 @@
 
       <div class="stat-card">
         <div class="stat-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 1v22M1 12h22"/>
-          </svg>
+          <i class="bi bi-cash-coin"></i>
         </div>
         <div class="stat-content">
           <h3 class="stat-number">₦{{ formatCurrency(stats.fundsDisbursed) }}</h3>
@@ -213,49 +217,142 @@ onMounted(() => {
 </script>
 
 <style scoped>
-  .stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--card-bg);
+    padding: .75rem;
     border-radius: var(--radius-lg);
-    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-xs);
+    border: 1px solid var(--border-primary);
+ 
+  }
+
+  .page-header .page-header-content h1 {
+    font-size: clamp(1.2rem, 1.5rem, 2rem);
+    font-weight: 600;
+    margin: 0;
+  }
+  .page-header .page-header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    
+  }
+
+  .page-header .page-header-content p {
+    font-size: clamp(0.8rem, .4rem, .4rem);
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .page-header .page-header-actions {
     display: flex;
     align-items: center;
     gap: 1rem;
+  }
+
+  .page-header .page-header-actions .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .page-header .page-header-actions .btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .page-header .page-header-actions .btn:hover {
+    background: var(--color-primary);
+    color: var(--text-primary);
+  }
+  
+  .stat-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 1rem;
     transition: all var(--transition-fast);
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+    box-shadow: var(--shadow-xs);
   }
   .stats{
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    
+    box-sizing: border-box;
   }
-  .stat-card:hover {
-    transform: translateY(-2px);
-    /* box-shadow: var(--shadow-sm); */
+  /* .stat-card:hover {
     border: 1px solid var(--color-primary);
-  }
+  } */
 
   .stat-icon {
     width: 48px;
-    height: 48px;
-    background: rgba(34, 197, 94, 0.1);
+    height: 48px; 
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-primary);
   }
+  .stat-icon i{
+    font-size: clamp(1rem, 1.5rem, 2rem);
+  }
+  .stat-card:nth-child(1) {
+    background: #6B59FF29;
+    color: var(--color-primary);
+    border: 1px solid #6B59FF25;
+    .stat-icon{
+      background: #6B59FF25;
+      color: #6B59FF;
+    }
+  }
+  .stat-card:nth-child(2) {
+    background: #ff990029;
+    color: var(--color-primary);
+    border: 1px solid #ff990025;
+    .stat-icon{
+      background: #ff990025;
+      color: #ff9900;
+    }
+  }
+  .stat-card:nth-child(3) {
+    background: #00c2ff29;
+    color: var(--color-primary);
+    border: 1px solid #00c2ff25;
+    .stat-icon{
+      background: #00c2ff25;
+      color: #00c2ff;
+    }
+  }
+  .stat-card:nth-child(4) {
+    background: #038a5229;
+    color: var(--text-primary);
+    border: 1px solid #038a5225;
+    .stat-icon{
+      background: #038a5225;
+      color: #038a52;
+    }
+  }
+  
 
-  .stat-icon svg {
+  /* .stat-icon svg {
     width: 24px;
     height: 24px;
     stroke: currentColor;
     stroke-width: 2;
-  }
+  } */
 
   .stat-content h3 {
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
     margin: 0;
   }
