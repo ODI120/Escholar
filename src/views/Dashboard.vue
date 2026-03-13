@@ -16,16 +16,6 @@
         <h1>Overview summary</h1>
         <p>Welcome back, here's what's happening with your scholarship program</p>
       </div>
-      <!-- <div class="page-header-actions">
-            <button class="btn btn-primary" @click="refreshData">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <polyline points="23,4 23,10 17,10"/>
-                    <polyline points="1,20 1,14 7,14"/>
-                    <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4l-4.64,4.36A9,9,0,0,1,3.51,15"/>
-                </svg>
-                Refresh
-            </button>
-        </div> -->
     </div>
 
     <!-- Stats Cards -->
@@ -220,36 +210,6 @@ onMounted(() => {
 
 <style scoped>
 
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--card-bg);
-    padding: .75rem;
-    border-radius: var(--radius-lg);
-    margin-bottom: 1rem;
-    box-shadow: var(--shadow-xs);
-    border: 1px solid var(--border-primary);
- 
-  }
-
-  .page-header .page-header-content h1 {
-    font-size: clamp(1.2rem, 1.5rem, 2rem);
-    font-weight: 600;
-    margin: 0;
-  }
-  .page-header .page-header-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    
-  }
-
-  .page-header .page-header-content p {
-    font-size: clamp(0.8rem, .4rem, .4rem);
-    color: var(--text-muted);
-    margin: 0;
-  }
 /* ---------------------------------------- */
   .stat-card {
     background: var(--card-bg);
@@ -340,26 +300,7 @@ a{
   
 
 /* ------------- */
-  .table {
-    color: var(--text-primary);
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    box-sizing: border-box;
-    gap: .4rem;
-  }
-
-  .table .row{
-    border-bottom: 1px solid var(--border-primary);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--bg-primary);
-    padding: .5rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-primary);
-  }
+ 
 
   .avatar-container{
     display: flex;

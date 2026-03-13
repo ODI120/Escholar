@@ -1,135 +1,121 @@
  <template>
   <AdminLayout>
-    <template #header-actions>
-      <button class="btn btn-primary" @click="showAddModal = true">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add Student
-      </button>
-    </template>
-
-    <!-- Filters -->
-    <div class="filters-section">
-      <div class="filters-grid">
-        <input
-          type="text"
-          class="input"
-          placeholder="Search students..."
-          v-model="searchQuery"
-        />
-
-        <select class="select" v-model="statusFilter">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="graduated">Graduated</option>
-          <option value="inactive">Inactive</option>
-          <option value="suspended">Suspended</option>
-        </select>
-
-        <select class="select" v-model="levelFilter">
-          <option value="">All Levels</option>
-          <option value="100">100 Level</option>
-          <option value="200">200 Level</option>
-          <option value="300">300 Level</option>
-          <option value="400">400 Level</option>
-          <option value="500">500 Level</option>
-        </select>
-
-        <input
-          type="text"
-          class="input"
-          placeholder="Filter by school..."
-          v-model="schoolFilter"
-        />
-
-        <button class="btn btn-outline-secondary w-full" @click="clearFilters">
-          Clear Filters
+    <div class="page-header">
+      <div class="page-header-content">
+        <h1>Active Beneficiaries</h1>
+        <p>Manage all beneficiaries in the scholarship program</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="add-btn" @click="showAddModal = true">
+          <i class="bi bi-plus-circle"></i>
+          Add Beneficiary
         </button>
       </div>
     </div>
+    
 
     <!-- Students Table -->
-    <div class="card">
+    <div class="cards">
+
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Students ({{ filteredStudents.length }})</h5>
-        <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary btn-sm" @click="exportData">
-            Export
-          </button>
+        <h5 class="card-title mb-0">Active Beneficiaries ({{ filteredStudents.length }})</h5>
+
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-section">
+        <!-- Search Input -->
+        <div class="search-container flex-grow-1">
+          <i class="bi bi-search search-icon"></i>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search beneficiaries..."
+            v-model="searchQuery"
+          />
         </div>
       </div>
-      <div class="card-body">
+
+      <div class="card-body table">
         <div v-if="loading" class="text-center py-4">
           <div class="loader"></div>
           <span class="visually-hidden">Loading...</span>
         </div>
 
         <div v-else-if="filteredStudents.length === 0" class="text-center py-4">
-          <p class="text-muted mb-0">No students found</p>
+          <p class="text-muted mb-0">No beneficiaries found</p>
         </div>
 
-        <div v-else class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Email</th>
-                <th>Admission Year</th>
-                <th>School</th>
-                <th>Department</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>School Fees</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="student in paginatedStudents" :key="student.id">
-                <td>
-                  <div class="d-flex align-items-center">
-                    <div class="avatar me-3">
-                      <img
-                        v-if="student.profile_picture"
-                        :src="student.profile_picture"
-                        :alt="student.full_name"
-                        class="rounded-circle"
-                      >
-                      <div v-else class="avatar-placeholder rounded-circle">
-                        {{ student.full_name.charAt(0).toUpperCase() }}
-                      </div>
-                    </div>
-                    <div>
-                      <div class="fw-semibold">{{ student.full_name }}</div>
-                      <small class="text-muted">{{ student.phone_number }}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>{{ student.email || '—' }}</td>
-                <td>{{ student.year_of_admission || '—' }}</td>
-                <td>{{ student.school }}</td>
-                <td>{{ student.department }}</td>
-                <td>{{ student.level }}</td>
-                <td>
-                  <span class="badge" :class="getStatusBadgeClass(student.status)">
-                    {{ student.status }}
-                  </span>
-                </td>
-                <td>₦{{ formatCurrency(student.school_fees) }}</td>
-                <td>
-                  <div class="btn-group" role="group">
-                    <router-link :to="`/students/${student.id}`" class="btn btn-sm btn-outline-primary">
-                      View
-                    </router-link>
-                    <button class="btn btn-sm btn-outline-secondary" @click="editStudent(student)">
-                      Edit
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else class="beneficiaries-grid">
+          <div v-for="student in paginatedStudents" :key="student.id" class="beneficiary-card">
+            
+            <!-- Context Menu / Top Right Actions -->
+                        
+            <!-- User Profile Info -->
+            <div class="card-profile">
+              <div class="avatar-wrapper">
+                <img
+                  v-if="student.profile_picture"
+                  :src="student.profile_picture"
+                  :alt="student.full_name"
+                  class="avatar-img"
+                >
+                <img
+                  v-else
+                  :src="`https://ui-avatars.com/api/?name=${student.full_name ? student.full_name.split(' ').join('+') : 'U'}&background=e9ecef&color=6c757d&size=100&font-size=0.4&bold=true`"
+                  :alt="student.full_name"
+                  class="avatar-img"
+                >
+              </div>
+              <div class="name-status">
+                <h5 class="fw-bold mb-1 text-truncate w-100 px-2" :title="student.full_name">{{ student.full_name }}</h5>
+                <small class="small text-truncate" :title="student.status">
+                  {{ student.status }}
+                </small>
+              </div>
+              
+            </div>
+
+            <!-- Divided Stats -->
+            <div class="card-stats">
+              <div class="stat-box">
+                <span class="stat-label">Level</span>
+                <span class="stat-value">{{ student.level }}L</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-box">
+                <span class="stat-label">Admitted</span>
+                <span class="stat-value">{{ student.year_of_admission || 'N/A' }}</span>
+              </div>
+            </div>
+
+            <!-- List Details -->
+            <div class="card-details">
+              <div class="detail-row">
+                <i class="bi bi-building text-primary"></i>
+                <span class="detail-text text-truncate" :title="student.school">{{ student.school }}</span>
+              </div>
+              <div class="detail-row">
+                <i class="bi bi-journal-text text-primary"></i>
+                <span class="detail-text text-truncate" :title="student.department">{{ student.department }}</span>
+              </div>
+              <div class="detail-row fee-row mt-2 pt-2 border-top">
+                <span class="fee-label">School Fees</span>
+                <span class="fee-value text-primary fw-bold">₦{{ formatCurrency(student.school_fees) }}</span>
+              </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="card-footer-actions">
+              <router-link :to="`/students/${student.id}`" class="btn btn-light-primary w-100">
+                <i class="bi bi-eye me-1"></i> View
+              </router-link>
+              <button class="btn btn-light-secondary w-100" @click="editStudent(student)">
+                <i class="bi bi-pencil me-1"></i> Edit
+              </button>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -288,14 +274,28 @@ const isEditing = ref(false)
 const editingStudent = ref(null)
 
 // Filters
+const showFiltersDropdown = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
 const levelFilter = ref('')
 const schoolFilter = ref('')
+const genderFilter = ref('')
+
+const levels = ['100', '200', '300', '400', '500']
+const statuses = ['active', 'graduated', 'inactive', 'suspended']
+const genders = ['male', 'female']
+
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value) count++
+  if (levelFilter.value) count++
+  if (genderFilter.value) count++
+  return count
+})
 
 // Pagination
 const currentPage = ref(1)
-const itemsPerPage = ref(10)
+const itemsPerPage = ref(6)
 
 // Student form
 const studentForm = ref({
@@ -331,10 +331,11 @@ const filteredStudents = computed(() => {
 
     const matchesStatus = !statusFilter.value || student.status === statusFilter.value
     const matchesLevel = !levelFilter.value || student.level === levelFilter.value
+    const matchesGender = !genderFilter.value || student.gender === genderFilter.value
     const matchesSchool = !schoolFilter.value ||
       student.school.toLowerCase().includes(schoolFilter.value.toLowerCase())
 
-    return matchesSearch && matchesStatus && matchesLevel && matchesSchool
+    return matchesSearch && matchesStatus && matchesLevel && matchesGender && matchesSchool
   })
 })
 
@@ -392,6 +393,7 @@ const clearFilters = () => {
   statusFilter.value = ''
   levelFilter.value = ''
   schoolFilter.value = ''
+  genderFilter.value = ''
   currentPage.value = 1
 }
 
@@ -481,7 +483,7 @@ const exportData = () => {
 }
 
 // Watchers
-watch([searchQuery, statusFilter, levelFilter, schoolFilter], () => {
+watch([searchQuery, statusFilter, levelFilter, schoolFilter, genderFilter], () => {
   currentPage.value = 1
 })
 
@@ -491,33 +493,42 @@ onMounted(() => {
 </script>
 
 <style scoped>
+
 .filters-section {
-  background: var(--surface);
+  display: flex;
+  gap: 1rem;
+  /* margin-bottom: 1rem; */
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 12px 16px 36px; /* space for icon */
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
-}
-
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.card-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-primary);
-  padding: 1.5rem;
-}
-
-.card-title {
+  background: var(--input-bg);
   color: var(--text-primary);
-  font-weight: 600;
+  font-size: 14px;
+  transition: var(--transition-fast);
 }
 
-.card-body {
-  padding: 0;
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 .card-footer {
@@ -529,6 +540,9 @@ onMounted(() => {
 .table {
   color: var(--text-primary);
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .table th {
@@ -669,4 +683,246 @@ onMounted(() => {
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modern Card Grid */
+.beneficiaries-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+  /* padding: 1rem; */
+}
+
+@media (min-width: 640px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1400px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.beneficiary-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); */
+  padding: 1rem;
+  cursor: pointer;
+} 
+
+.beneficiary-card:hover {
+  /* transform: translateY(-5px); */
+  box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  border-color: var(--color-primary);
+}
+
+
+.card-profile {
+  /* padding: 0 0 1rem 0; */
+  display: flex;
+  align-items: center;
+  /* background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, transparent) 0%, transparent 100%); */
+  gap: .5rem;
+}
+.name-status{
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: .3rem;
+}
+.name-status h5{
+  font-weight: 600;
+  margin: 0;
+  font-size: clamp(1rem, 1rem, 1rem);
+}
+.name-status small{
+  margin: 0;
+  color: var(--text-muted);
+}
+.avatar-wrapper {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: #e0e0e0;
+  border: 3px solid color-mix(in srgb, var(--color-primary) 10%, transparent);;
+}
+
+.avatar-img{
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.avatar-placeholder-lg {
+  background: linear-gradient(135deg, var(--color-primary), #10b981); /* green/emerald tint */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.card-stats {
+  display: flex;
+  background: var(--input-bg);
+  border-radius: 12px;
+  padding: 0.75rem 0;
+  border: 1px solid var(--border-primary);
+}
+
+.stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-divider {
+  width: 1px;
+  background: var(--border-primary);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.stat-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.detail-row i {
+  font-size: 1.1rem;
+  opacity: 0.8;
+  width: 20px;
+  text-align: center;
+}
+.detail-row:nth-child(1) i {
+  color: #0099ff;
+}
+.detail-row:nth-child(2) i {
+  color: #ffa600;
+}
+
+
+.detail-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 0;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between !important;
+  align-items: center;
+  border-top: 1px dashed var(--border-primary);
+  padding-top: 1rem;
+}
+
+.fee-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.fee-value {
+  font-size: 1.1rem;
+}
+
+.card-footer-actions {
+  border-top: 1px dashed var(--border-primary);
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.btn-light-primary {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: none;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s;
+  width: 100%;
+  gap: .5rem;
+}
+
+.btn-light-primary:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-light-secondary {
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s;
+  width: 100%;
+  gap: .5rem;
+}
+
+.btn-light-secondary:hover {
+  background: var(--text-secondary);
+  color: white;
+  border-color: var(--text-secondary);
+}
+
 </style>
