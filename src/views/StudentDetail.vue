@@ -21,6 +21,7 @@
           <span>Edit Profile</span>
         </button>
       </div>
+
     </div>
 
     <!-- Loading State -->
@@ -46,26 +47,32 @@
             <div v-else class="profile-avatar-placeholder">
               {{ student.full_name.charAt(0).toUpperCase() }}
             </div>
-            <div class="status-indicator" :class="student.status"></div>
+            <!-- <div class="status-indicator" :class="student.status"></div> -->
           </div>
           <div class="profile-main-info">
             <div class="name-badge-row">
               <h1 class="student-name">{{ student.full_name }}</h1>
-              <span class="status-badge" :class="student.status">{{ student.status }}</span>
+              <!-- <span class="status-badge" :class="student.status">{{ student.status }}</span> -->
             </div>
             <p class="student-subtitle">
               <i class="bi bi-mortarboard-fill"></i>
-              {{ student.school }} • {{ student.department }}
+              {{ student.school }} • <span class="Department">{{ student.department }}</span>
             </p>
             <div class="quick-stats">
               <div class="quick-stat-item">
-                <span class="stat-lbl">Level</span>
-                <span class="stat-val">{{ student.level }}L</span>
+                <span class="stat-lbl">Remaining</span>
+                <span class="stat-val">{{ student.years_remaining !== undefined ? `${student.years_remaining} yrs` : '—' }}</span>
               </div>
+
+              <div class="vertical-line"></div>
+
               <div class="quick-stat-item">
                 <span class="stat-lbl">Admission</span>
                 <span class="stat-val">{{ student.year_of_admission || 'N/A' }}</span>
               </div>
+
+              <div class="vertical-line"></div>
+
               <div class="quick-stat-item">
                 <span class="stat-lbl">Total Received</span>
                 <span class="stat-val primary-color">₦{{ formatCurrency(totalReceived) }}</span>
@@ -104,7 +111,11 @@
                 </div>
                 <div class="info-group">
                   <label>Current level</label>
-                  <span>{{ student.level }} Level</span>
+                  <span>{{ student.level ? `${student.level} Level` : 'Graduated' }}</span>
+                </div>
+                <div class="info-group">
+                  <label>Course Duration</label>
+                  <span>{{ student.course_duration ? `${student.course_duration} Years` : '—' }}</span>
                 </div>
                 <div class="info-group">
                   <label>Admission Year</label>
@@ -226,18 +237,18 @@
               <i class="bi bi-wallet2"></i>
               <h3>Financial Overview</h3>
             </div>
-            <div class="card-body">
+            <div class="fin-card-body">
               <div class="financial-stat">
-                <label>Total Benefits Received</label>
+                <label>Total Amount Received</label>
                 <div class="stat-amount primary">₦{{ formatCurrency(totalReceived) }}</div>
               </div>
               <div class="financial-sep"></div>
               <div class="financial-stat">
-                <label>Expected School Fees</label>
+                <label>School Fees</label>
                 <div class="stat-amount blue">₦{{ formatCurrency(student.school_fees) }}</div>
               </div>
               
-              <div class="bank-info mt-4">
+              <div class="bank-info">
                 <label class="info-lbl-sm">Payment Details</label>
                 <div class="bank-item">
                   <i class="bi bi-bank"></i>
@@ -285,6 +296,12 @@
                 <p v-if="student.updated_at">Last updated {{ formatDate(student.updated_at) }}</p>
              </div>
           </div>
+        <div class="header-right">
+          <button class="action-btn delete-btn" @click="showDeleteModal = true">
+            <i class="bi bi-trash3"></i>
+            <span>Delete</span>
+          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -296,6 +313,80 @@
       <p>The student record you are looking for doesn't exist or has been removed.</p>
       <router-link to="/students" class="btn-primary mt-3">Return to List</router-link>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
+        <div class="delete-modal">
+          <div class="delete-modal-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+          <h3>Delete Beneficiary?</h3>
+          <p>You are about to permanently delete <strong>{{ student?.full_name }}</strong>. This action cannot be undone and will remove all associated records.</p>
+          <div class="delete-modal-actions">
+            <button class="cancel-del-btn" @click="showDeleteModal = false" :disabled="deleteLoading">Cancel</button>
+            <button class="confirm-del-btn" @click="deleteStudentRecord" :disabled="deleteLoading">
+              <span v-if="deleteLoading">Deleting...</span>
+              <span v-else><i class="bi bi-trash3"></i> Delete Permanently</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Add Payment Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showPaymentModal" class="modal-overlay" @click.self="showPaymentModal = false">
+        <div class="payment-modal form-card">
+          <div class="card-head between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="icon-box-sm primary">
+                <i class="bi bi-cash-stack"></i>
+              </div>
+              <h3>Record Payment</h3>
+            </div>
+            <button class="close-btn" @click="showPaymentModal = false" :disabled="paymentLoading">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          
+          <form @submit.prevent="submitPayment" class="card-body">
+            <div class="form-group mb-3">
+              <label>Amount (₦) <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <i class="bi bi-currency-exchange"></i>
+                <input type="number" v-model="paymentForm.amount" class="form-control" required min="1" step="0.01" placeholder="e.g. 50000">
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <label>Description <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <i class="bi bi-card-text"></i>
+                <input type="text" v-model="paymentForm.description" class="form-control" required placeholder="e.g. First semester fees">
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label>Date <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <i class="bi bi-calendar-event"></i>
+                <input type="date" v-model="paymentForm.date" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="modal-actions pt-2 border-top">
+              <button type="button" class="btn-light-secondary" @click="showPaymentModal = false" :disabled="paymentLoading">Cancel</button>
+              <button type="submit" class="btn-primary" :disabled="paymentLoading">
+                <span v-if="paymentLoading" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check2-circle me-1"></i>
+                {{ paymentLoading ? 'Saving...' : 'Save Payment' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
   </AdminLayout>
 </template>
 
@@ -307,10 +398,17 @@ import { useSupabaseStudents } from '../composables/useSupabase.js'
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent } = useSupabaseStudents()
+const { getStudent, deleteStudent, createPayment } = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
+
+const showDeleteModal = ref(false)
+const deleteLoading = ref(false)
+
+const showPaymentModal = ref(false)
+const paymentLoading = ref(false)
+const paymentForm = ref({ amount: '', description: '', date: new Date().toISOString().split('T')[0] })
 
 const loadStudent = async () => {
   loading.value = true
@@ -347,10 +445,26 @@ const totalReceived = computed(() => {
 })
 
 const editStudent = () => {
-  // We can pass the student object to the students page or open a modal
-  // For now, let's redirect to students list with a query param if we wanted to auto-open modal, 
-  // or handle it here if shared state existed. Let's just log for now.
   router.push({ path: '/students', query: { edit: student.value.id } })
+}
+
+const deleteStudentRecord = async () => {
+  deleteLoading.value = true
+  try {
+    const { error } = await deleteStudent(student.value.id)
+    if (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete student: ' + (error.message || 'Unknown error'))
+    } else {
+      router.push({ path: '/students' })
+    }
+  } catch (err) {
+    console.error('Delete failed:', err)
+    alert('Something went wrong. Please try again.')
+  } finally {
+    deleteLoading.value = false
+    showDeleteModal.value = false
+  }
 }
 
 const callStudent = () => {
@@ -366,7 +480,33 @@ const callParent = () => {
 }
 
 const addPayment = () => {
-  console.log('Add payment for student:', student.value.id)
+  paymentForm.value = { amount: '', description: '', date: new Date().toISOString().split('T')[0] }
+  showPaymentModal.value = true
+}
+
+const submitPayment = async () => {
+  paymentLoading.value = true
+  try {
+    const payload = {
+      student_id: student.value.id,
+      amount: paymentForm.value.amount,
+      description: paymentForm.value.description,
+      date: paymentForm.value.date,
+      status: 'paid'
+    }
+    const { data, error } = await createPayment(payload)
+    if (error) throw error
+    
+    // Update local state instead of reloading to save a request
+    if (!student.value.payments) student.value.payments = []
+    student.value.payments.unshift(data)
+    showPaymentModal.value = false
+  } catch (err) {
+    console.error('Error saving payment:', err)
+    alert('Failed to save payment. Please try again.')
+  } finally {
+    paymentLoading.value = false
+  }
 }
 
 const markAsPaid = () => {
@@ -474,6 +614,12 @@ onMounted(() => {
   font-weight: 600;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .action-btn {
   display: flex;
   align-items: center;
@@ -498,20 +644,55 @@ onMounted(() => {
   box-shadow: 0 6px 15px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
 /* Profile Hero Card */
 .profile-hero-card {
-  position: relative;
   background: var(--surface);
-  border-radius: 24px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--border-primary);
-  min-height: 280px;
   display: flex;
   align-items: flex-end;
+  padding: 1.25rem;
+  position: relative;
+  transition: box-shadow 0.35s ease;
+}
+
+.profile-hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 5%, transparent) 0%, transparent 55%);
+  pointer-events: none;
 }
 
 .hero-blur-bg {
-  position: absolute;
+  /* position: absolute; */
   top: 0;
   left: 0;
   right: 0;
@@ -524,45 +705,54 @@ onMounted(() => {
 }
 
 .hero-content {
-  position: relative;
+  /* position: relative; */
   z-index: 2;
-  padding: 2.5rem;
+  /* padding: 2.5rem; */
   display: flex;
   align-items: center;
-  gap: 2.5rem;
+  gap: 1rem;
   width: 100%;
   background: linear-gradient(to top, var(--surface) 20%, transparent 100%);
 }
 
 .profile-avatar-wrapper {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 130px;
+  height: 130px;
   flex-shrink: 0;
 }
+/* .Department {
+  color: var(--color-primary);
+} */
 
 .profile-avatar-img {
   width: 100%;
   height: 100%;
-  border-radius: 40px;
+  border-radius: var(--radius-2xl);
   object-fit: cover;
-  border: 6px solid white;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,0.05);
+  transition: transform 0.35s var(--spring);
+}
+
+.profile-avatar-img:hover {
+  transform: scale(1.03);
 }
 
 .profile-avatar-placeholder {
   width: 100%;
   height: 100%;
-  border-radius: 40px;
+  border-radius: var(--radius-2xl);
   background: linear-gradient(135deg, var(--color-primary), #10b981);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 4rem;
-  font-weight: 700;
-  border: 6px solid white;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-lg);
 }
 
 .status-indicator {
@@ -572,7 +762,7 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 4px solid white;
+  border: 1px solid white;
   z-index: 3;
 }
 
@@ -585,6 +775,8 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  
 }
 
 .name-badge-row {
@@ -595,8 +787,8 @@ onMounted(() => {
 }
 
 .student-name {
-  font-size: 2.25rem;
-  font-weight: 800;
+  font-size: clamp(1.5rem, 1vw, 1rem);
+  font-weight: 600;
   color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.02em;
@@ -618,35 +810,52 @@ onMounted(() => {
 
 .student-subtitle {
   color: var(--text-secondary);
-  font-size: 1.1rem;
-  margin: 0.5rem 0 1.5rem 0;
+  font-size: 1rem;
+  /* margin: 0.5rem 0 1.5rem 0; */
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-style: italic;
 }
 
 .quick-stats {
   display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
+  border: 1px solid var(--border-primary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  align-items: center;
+  width: 370px;
+  background: var(--bg-primary);
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+}
+
+.vertical-line {
+  width: 1px;
+  height: 2rem;
+  background-color: var(--border-primary);
 }
 
 .quick-stat-item {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 1px;
 }
 
 .stat-lbl {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 .stat-val {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .primary-color { color: var(--color-primary); }
@@ -655,7 +864,7 @@ onMounted(() => {
 .detail-main-grid {
   display: grid;
   grid-template-columns: 1fr 340px;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 /* Column Wrappers */
@@ -667,18 +876,22 @@ onMounted(() => {
 /* Detail Cards */
 .detail-card {
   background: var(--surface);
-  border-radius: 20px;
+  border-radius: var(--radius-2xl);
   border: 1px solid var(--border-primary);
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.detail-card:hover {
+  box-shadow: none;
 }
 
 .card-head {
-  padding: 1.25rem 1.5rem;
+  padding: 1rem;
   display: flex;
   align-items: center;
   gap: 0.85rem;
   border-bottom: 1px solid var(--border-primary);
+  background: color-mix(in srgb, var(--color-primary) 2%, var(--surface));
 }
 
 .card-head.between {
@@ -686,53 +899,76 @@ onMounted(() => {
 }
 
 .card-head i {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .card-head h3 {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .card-body {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 /* Information Grid */
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .2rem;
+  /* background: var(--bg-primary); */
+  padding: .2rem;
+  border-radius: 10px;
+  /* border: 1px solid var(--border-primary); */
+
 }
 
 .info-grid.half {
-    grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .info-group {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+  background: var(--bg-primary);
 }
 
-.info-group.full-width {
+/* .info-group:hover {
+  background: var(--bg-primary);
+} */
+
+/* .info-group.full-width {
   grid-column: 1 / -1;
-}
+} */
 
 .info-group label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.6px;
 }
 
 .info-group span {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .capitalize { text-transform: capitalize; }
@@ -776,15 +1012,17 @@ onMounted(() => {
   padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border-primary);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.25s var(--spring);
+  box-shadow: var(--shadow-xs);
 }
 
 .doc-item:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 2%, transparent);
-  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
 }
 
 .doc-icon {
@@ -899,6 +1137,13 @@ onMounted(() => {
   background: linear-gradient(135deg, var(--surface) 0%, color-mix(in srgb, var(--color-primary) 2%, transparent) 100%);
 }
 
+.financial-card .fin-card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
 .financial-stat {
   display: flex;
   flex-direction: column;
@@ -922,11 +1167,11 @@ onMounted(() => {
 .financial-sep {
   height: 1px;
   background: var(--border-primary);
-  margin: 1.5rem 0;
+
 }
 
 .bank-info {
-  background: white;
+  background: var(--bg-primary);
   padding: 1rem;
   border-radius: 12px;
   border: 1px solid var(--border-primary);
@@ -982,12 +1227,13 @@ onMounted(() => {
   gap: 0.85rem;
   width: 100%;
   padding: 0.85rem 1rem;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-weight: 600;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s var(--spring);
   text-align: left;
+  font-size: 0.9rem;
 }
 
 .stack-btn.communication {
@@ -997,10 +1243,11 @@ onMounted(() => {
 }
 
 .stack-btn.communication:hover {
-  background: white;
+  background: var(--surface);
   border-color: var(--color-primary);
   color: var(--color-primary);
-  transform: translateX(4px);
+  transform: translateX(5px);
+  box-shadow: var(--shadow-sm);
 }
 
 .stack-btn.success {
@@ -1011,7 +1258,8 @@ onMounted(() => {
 .stack-btn.success:hover {
   background: #059669;
   color: white;
-  transform: translateX(4px);
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
 }
 
 .stack-btn.info {
@@ -1022,11 +1270,315 @@ onMounted(() => {
 .stack-btn.info:hover {
   background: #0284c7;
   color: white;
-  transform: translateX(4px);
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
 }
 
 .stack-btn i {
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: rgba(0,0,0,0.05);
+  flex-shrink: 0;
+  transition: transform 0.25s var(--spring);
+}
+
+.stack-btn:hover i {
+  transform: scale(1.1);
+}
+
+/* Delete Confirmation Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.delete-modal {
+  background: var(--surface);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-primary);
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.delete-modal-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.delete-modal-icon i {
+  font-size: 2rem;
+  color: #dc2626;
+}
+
+.delete-modal h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.delete-modal p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.delete-modal strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.cancel-del-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-del-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.confirm-del-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: var(--radius-lg);
+  background: #dc2626;
+  border: none;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.confirm-del-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.confirm-del-btn:disabled,
+.cancel-del-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal fade transition */
+.modal-fade-enter-active, .modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.modal-fade-enter-from, .modal-fade-leave-to {
+  opacity: 0;
+}
+
+/* Payment Modal Specifics */
+.payment-modal {
+  background: var(--surface);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-primary);
+  max-width: 480px;
+  width: 100%;
+  animation: modal-pop 0.3s var(--spring);
+  overflow: hidden;
+}
+
+.payment-modal .card-head {
+  padding: 1.25rem 1.5rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.icon-box-sm {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
   font-size: 1.15rem;
+}
+
+.icon-box-sm.primary {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon i {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.8rem;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  font-size: 0.95rem;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-light-secondary {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-light-secondary:hover {
+  background: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: 1px solid var(--color-primary);
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s var(--spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 85%, black);
+  border-color: color-mix(in srgb, var(--color-primary) 85%, black);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.btn-primary:disabled, .btn-light-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-btn-sm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s var(--spring);
+}
+
+.add-btn-sm:hover {
+  background: var(--color-primary);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 /* Mini Audit */
@@ -1084,24 +1636,7 @@ onMounted(() => {
   .sidebar-col {
     order: 2;
   }
-  
-  .hero-content {
-    flex-direction: column;
-    text-align: center;
-    padding: 2rem 1.5rem;
-  }
-  
-  .profile-main-info {
-    align-items: center;
-  }
-  
-  .quick-stats {
-    justify-content: center;
-  }
-  
-  .name-badge-row {
-    justify-content: center;
-  }
+
 }
 
 @media (max-width: 640px) {
@@ -1110,13 +1645,10 @@ onMounted(() => {
   }
   
   .student-name {
-    font-size: 1.75rem;
+    font-size: 1rem;
+    font-weight: 600;
   }
-  
-  .quick-stats {
-    gap: 1rem;
-  }
-  
+
   .hero-content {
       gap: 1.5rem;
   }
@@ -1125,5 +1657,46 @@ onMounted(() => {
       width: 120px;
       height: 120px;
   }
+}
+@media (max-width: 567px) {
+  .hero-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 0!important;
+  }
+  .name-badge-row {
+    justify-content: center;
+  }
+  .profile-main-info {
+    align-items: center;
+    width: 100%;
+    
+  }
+  .profile-avatar-wrapper img{
+    border-radius: 50%;
+  }
+  .breadcrumb-nav span, .breadcrumb-nav a, .breadcrumb-nav i{
+   display: none;
+  }
+
+}
+
+@media (max-width: 425px) {
+  .quick-stats {
+
+     width: 100% ;
+  }
+  
+  .page-header{
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 320px) {
+  .profile-main-info i{
+    display: none;
+  }
+
 }
 </style>

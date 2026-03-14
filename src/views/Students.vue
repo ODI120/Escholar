@@ -220,28 +220,12 @@
                     <input type="text" class="custom-input" v-model="studentForm.department" required placeholder="Course of Study">
                   </div>
                   <div class="custom-input-group">
-                    <label class="custom-label">Level <span class="required">*</span></label>
-                    <select class="custom-select" v-model="studentForm.level" required>
-                      <option value="" disabled>Select Level</option>
-                      <option value="100">100 Level</option>
-                      <option value="200">200 Level</option>
-                      <option value="300">300 Level</option>
-                      <option value="400">400 Level</option>
-                      <option value="500">500 Level</option>
-                    </select>
+                    <label class="custom-label">Course Duration (Years) <span class="required">*</span></label>
+                    <input type="number" min="1" max="10" class="custom-input" v-model="studentForm.course_duration" required placeholder="e.g. 4">
                   </div>
                   <div class="custom-input-group">
                     <label class="custom-label">Year of Admission</label>
                     <input type="number" min="1900" class="custom-input" v-model="studentForm.year_of_admission" placeholder="e.g. 2024">
-                  </div>
-                  <div class="custom-input-group">
-                    <label class="custom-label">Status <span class="required">*</span></label>
-                    <select class="custom-select" v-model="studentForm.status" required>
-                      <option value="" disabled>Select Status</option>
-                      <option value="active">Active Student</option>
-                      <option value="graduated">Graduated</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
                   </div>
                   <div class="custom-input-group">
                     <label class="custom-label">Admission Letter URL</label>
@@ -315,7 +299,7 @@ const editingStudent = ref(null)
 // Filters
 const showFiltersDropdown = ref(false)
 const searchQuery = ref('')
-const statusFilter = ref('')
+const statusFilter = ref('active')
 const levelFilter = ref('')
 const schoolFilter = ref('')
 const genderFilter = ref('')
@@ -334,7 +318,7 @@ const activeFiltersCount = computed(() => {
 
 // Pagination
 const currentPage = ref(1)
-const itemsPerPage = ref(6)
+const itemsPerPage = ref(8)
 
 // Student form
 const studentForm = ref({
@@ -346,7 +330,7 @@ const studentForm = ref({
   profile_picture: '',
   school: '',
   department: '',
-  level: '',
+  course_duration: '',
   parent_name: '',
   parent_phone: '',
   account_number: '',
@@ -375,7 +359,7 @@ const filteredStudents = computed(() => {
       student.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       (student.year_of_admission ? String(student.year_of_admission) : '').includes(searchQuery.value)
 
-    const matchesStatus = !statusFilter.value || student.status === statusFilter.value
+    const matchesStatus = student.status === 'active'
     const matchesLevel = !levelFilter.value || student.level === levelFilter.value
     const matchesGender = !genderFilter.value || student.gender === genderFilter.value
     const matchesSchool = !schoolFilter.value ||
@@ -512,7 +496,7 @@ const closeModal = () => {
     profile_picture: '',
     school: '',
     department: '',
-    level: '',
+    course_duration: '',
     parent_name: '',
     parent_phone: '',
     account_number: '',
@@ -566,9 +550,37 @@ const handleSubmit = async () => {
   modalLoading.value = true
 
   try {
+    // Dynamically calculate level, status, and years remaining before submit
+    const currentYear = new Date().getFullYear();
+    const admissionYear = Number(studentForm.value.year_of_admission);
+    const duration = Number(studentForm.value.course_duration);
+    
+    let calculatedLevel = '100';
+    let calculatedStatus = 'active';
+    let yearsRemaining = duration;
+
+    if (admissionYear && duration) {
+       const yearsPassed = currentYear - admissionYear;
+       
+       if (yearsPassed >= duration) {
+         calculatedStatus = 'graduated';
+         calculatedLevel = `${duration * 100}`;
+         yearsRemaining = 0;
+       } else {
+         calculatedStatus = 'active';
+         // Level is strictly based on years passed + 1
+         const levelValue = Math.max(1, yearsPassed + 1) * 100;
+         calculatedLevel = `${levelValue}`;
+         yearsRemaining = Math.max(0, duration - yearsPassed);
+       }
+    }
+
     const formData = {
       ...studentForm.value,
-      school_fees: parseFloat(studentForm.value.school_fees) || 0
+      school_fees: parseFloat(studentForm.value.school_fees) || 0,
+      level: calculatedLevel,
+      status: calculatedStatus,
+      years_remaining: yearsRemaining
     }
     
     // Upload profile picture if exists
@@ -1140,9 +1152,8 @@ onMounted(async () => {
 .beneficiaries-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: 1.25rem;
   margin-top: 1rem;
-  /* padding: 1rem; */
 }
 
 @media (min-width: 640px) {
@@ -1166,80 +1177,112 @@ onMounted(async () => {
 .beneficiary-card {
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
-  border-radius: 16px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-2xl);
+  transition: transform 0.35s var(--spring), box-shadow 0.35s var(--spring), border-color 0.2s ease;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   overflow: hidden;
-  /* box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); */
-  padding: 1rem;
+  padding: 1.25rem;
   cursor: pointer;
-} 
+  position: relative;
+}
+
+.beneficiary-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 4%, transparent) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
 
 .beneficiary-card:hover {
-  /* transform: translateY(-5px); */
-  box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  border-color: var(--color-primary);
+  /* transform: translateY(-4px); */
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.beneficiary-card:hover::before {
+  opacity: 1;
 }
 
 
 .card-profile {
-  /* padding: 0 0 1rem 0; */
   display: flex;
   align-items: center;
-  /* background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, transparent) 0%, transparent 100%); */
-  gap: .5rem;
+  gap: 0.75rem;
 }
-.name-status{
+.name-status {
   display: flex;
   flex-direction: column;
   align-items: start;
-  gap: .3rem;
+  gap: 0.2rem;
+  min-width: 0;
 }
-.name-status h5{
-  font-weight: 600;
+.name-status h5 {
+  font-weight: 700;
   margin: 0;
-  font-size: clamp(1rem, 1rem, 1rem);
-}
-.name-status small{
-  margin: 0;
-  color: var(--text-muted);
-}
-.avatar-wrapper {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 10px;
-  box-sizing: border-box;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   overflow: hidden;
-  background-color: #e0e0e0;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.name-status small {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
-.avatar-img{
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
+.avatar-wrapper {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  transition: transform 0.3s var(--spring);
+}
+
+.beneficiary-card:hover .avatar-wrapper {
+  transform: scale(1.05);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
   object-fit: cover;
+  display: block;
 }
 
 .avatar-placeholder-lg {
-  background: linear-gradient(135deg, var(--color-primary), #10b981); /* green/emerald tint */
+  background: linear-gradient(135deg, var(--color-primary), #10b981);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  font-weight: 700;
+  width: 100%;
+  height: 100%;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .card-stats {
   display: flex;
-  background: var(--input-bg);
-  border-radius: 12px;
-  padding: 0.75rem 0;
-  border: 1px solid var(--border-primary);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 0.875rem 0;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .stat-box {
@@ -1256,18 +1299,19 @@ onMounted(async () => {
 }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 2px;
+  font-weight: 700;
+  margin-bottom: 3px;
 }
 
 .stat-value {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .card-details {
@@ -1282,71 +1326,92 @@ onMounted(async () => {
   align-items: center;
   gap: 0.75rem;
   font-size: 0.875rem;
+  padding: 0.25rem 0;
 }
 
 .detail-row i {
-  font-size: 1.1rem;
-  opacity: 0.8;
-  width: 20px;
-  text-align: center;
+  font-size: 1rem;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 .detail-row:nth-child(1) i {
   color: #0099ff;
+  background: rgba(0, 153, 255, 0.1);
 }
 .detail-row:nth-child(2) i {
-  color: #ffa600;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
 }
-
 
 .detail-text {
   color: var(--text-secondary);
   font-weight: 500;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fee-row {
   display: flex;
   justify-content: space-between !important;
   align-items: center;
-  border-top: 1px dashed var(--border-primary);
-  padding-top: 1rem;
+  border-top: 1px dashed color-mix(in srgb, var(--border-primary) 70%, transparent);
+  padding-top: 0.875rem;
+  margin-top: 0.25rem;
 }
 
 .fee-label {
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .fee-value {
-  font-size: 1.1rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-muted);
 }
 
 .card-footer-actions {
-  border-top: 1px dashed var(--border-primary);
+  border-top: 1px dashed color-mix(in srgb, var(--border-primary) 70%, transparent);
   display: flex;
-  gap: 0.75rem;
-  padding-top: 1rem;
+  gap: 0.625rem;
+  padding-top: 0.875rem;
 }
 
 .btn-light-primary {
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
-  border: none;
-  font-weight: 600;
-  border-radius: 8px;
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  font-weight: 700;
+  border-radius: 10px;
   padding: 0.5rem 1rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.25s var(--spring);
   width: 100%;
-  gap: .5rem;
+  gap: 0.4rem;
+  letter-spacing: 0.01em;
 }
 
 .btn-light-primary:hover {
   background: var(--color-primary);
   color: white;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  
 }
 
 .btn-light-secondary {
@@ -1354,21 +1419,23 @@ onMounted(async () => {
   color: var(--text-secondary);
   border: 1px solid var(--border-primary);
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.5rem 1rem;
+  font-size: 0.85rem;
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   width: 100%;
-  gap: .5rem;
+  gap: 0.4rem;
 }
 
 .btn-light-secondary:hover {
   background: var(--text-secondary);
   color: white;
   border-color: var(--text-secondary);
+  transform: translateY(-1px);
 }
 
 </style>

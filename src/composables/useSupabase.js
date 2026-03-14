@@ -82,6 +82,67 @@ export const useSupabaseStudents = () => {
   // Mock data for development
   const mockStudents = [
     {
+      id: '1',
+      full_name: 'John Doe',
+      school: 'University of Lagos',
+      department: 'Computer Science',
+      level: '300',
+      course_duration: 4,
+      years_remaining: 1,
+      gender: 'male',
+      phone_number: '08012345678',
+      year_of_admission: 2021,
+      school_fees: 150000,
+      profile_picture: 'https://i.pravatar.cc/150?u=1',
+      admission_letter_url: 'https://example.com/admission1.pdf',
+      payments: [
+        { id: 'p1', date: '2023-01-15', amount: 150000, description: 'First semester fees', status: 'paid' },
+        { id: 'p2', date: '2023-08-20', amount: 150000, description: 'Second semester fees', status: 'paid' }
+      ],
+      status: 'active',
+      created_at: '2023-01-10T10:00:00Z'
+    },
+    {
+      id: '2',
+      full_name: 'Jane Smith',
+      school: 'Ahmadu Bello University',
+      department: 'Medicine',
+      level: '200',
+      course_duration: 6,
+      years_remaining: 4,
+      gender: 'female',
+      phone_number: '07098765432',
+      year_of_admission: 2022,
+      school_fees: 250000,
+      profile_picture: 'https://i.pravatar.cc/150?u=2',
+      admission_letter_url: 'https://example.com/admission2.pdf',
+      payments: [
+        { id: 'p3', date: '2023-02-10', amount: 250000, description: 'Session fees', status: 'paid' }
+      ],
+      status: 'active',
+      created_at: '2023-02-05T10:00:00Z'
+    },
+    {
+      id: '3',
+      full_name: 'Michael Johnson',
+      school: 'Obafemi Awolowo University',
+      department: 'Engineering',
+      level: '500',
+      course_duration: 5,
+      years_remaining: 0,
+      gender: 'male',
+      phone_number: '08123456789',
+      year_of_admission: 2018,
+      school_fees: 180000,
+      profile_picture: 'https://i.pravatar.cc/150?u=3',
+      admission_letter_url: 'https://example.com/admission3.pdf',
+      payments: [
+        { id: 'p4', date: '2022-05-01', amount: 180000, description: 'Final payment', status: 'paid' }
+      ],
+      status: 'active',
+      created_at: '2024-01-10T10:00:00Z'
+    },
+    {
       id: '11111111-1111-1111-1111-111111111111',
       full_name: 'Adebayo Johnson',
       email: 'adebayo.johnson@example.com',
@@ -92,6 +153,8 @@ export const useSupabaseStudents = () => {
       school: 'University of Lagos',
       department: 'Computer Science',
       level: '200',
+      course_duration: 4,
+      years_remaining: 2,
       parent_name: 'Mrs. Johnson',
       parent_phone: '+2348012345679',
       account_number: '1234567890',
@@ -117,6 +180,8 @@ export const useSupabaseStudents = () => {
       school: 'University of Ibadan',
       department: 'Medicine',
       level: '300',
+      course_duration: 6,
+      years_remaining: 3,
       parent_name: 'Mr. Abdul',
       parent_phone: '+2348023456790',
       account_number: '0987654321',
@@ -159,7 +224,7 @@ export const useSupabaseStudents = () => {
   const getStudents = async () => {
     if (isMock) return { data: mockStudents, error: null }
     try {
-      const { data, error } = await supabase.from('students').select('*').order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('students').select('*, payments(*)').order('created_at', { ascending: false })
       return { data, error }
     } catch (err) {
       return { data: [], error: { message: err.message || 'Database error' } }
@@ -229,5 +294,28 @@ export const useSupabaseStudents = () => {
     }
   }
 
-  return { getStudents, getStudent, createStudent, updateStudent, deleteStudent }
+  const createPayment = async (payment) => {
+    const record = {
+      student_id: payment.student_id,
+      amount: parseFloat(payment.amount),
+      description: payment.description || '',
+      date: payment.date || new Date().toISOString(),
+      status: payment.status || 'paid'
+    }
+    if (isMock) {
+      const newPayment = { id: `p-${Date.now()}`, ...record, created_at: new Date().toISOString() }
+      // Add to mock student's payments array
+      const student = mockStudents.find(s => s.id === record.student_id)
+      if (student) student.payments.unshift(newPayment)
+      return { data: newPayment, error: null }
+    }
+    try {
+      const { data, error } = await supabase.from('payments').insert([record]).select().single()
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Unable to record payment.' } }
+    }
+  }
+
+  return { getStudents, getStudent, createStudent, updateStudent, deleteStudent, createPayment }
 }

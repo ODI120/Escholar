@@ -109,6 +109,9 @@
                       <small class="level">
                         {{ student.school }} | {{ student.level }}L
                       </small>
+                      <small class="text-muted" style="font-size: 0.75rem;">
+                        Added: {{ new Date(student.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                      </small>
                     </div>
                   </div>
                 </div>

@@ -1,10 +1,1435 @@
-<template>
+  <template>
   <AdminLayout>
-    <h2>Graduates</h2>
-    <p>List of graduated beneficiaries will appear here.</p>
+    <div class="page-header">
+      <div class="page-header-content">
+        <h1>Graduated Alumni</h1>
+        <p>View all graduated beneficiaries from the scholarship program</p>
+      </div>
+    </div>
+    
+
+    <!-- Students Table -->
+    <div class="cards">
+
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Graduated Alumni ({{ filteredStudents.length }})</h5>
+
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-section">
+        <!-- Search Input -->
+        <div class="search-container flex-grow-1">
+          <i class="bi bi-search search-icon"></i>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search beneficiaries..."
+            v-model="searchQuery"
+          />
+        </div>
+      </div>
+
+      <div class="card-body table">
+        <div v-if="loading" class="text-center py-4">
+          <div class="loader"></div>
+          <span class="visually-hidden">Loading...</span>
+        </div>
+
+        <div v-else-if="filteredStudents.length === 0" class="text-center py-4">
+          <p class="text-muted mb-0">No beneficiaries found</p>
+        </div>
+
+        <div v-else class="beneficiaries-grid">
+          <div v-for="student in paginatedStudents" :key="student.id" class="beneficiary-card">
+            
+            <!-- Context Menu / Top Right Actions -->
+                        
+            <!-- User Profile Info -->
+            <div class="card-profile">
+              <div class="avatar-wrapper">
+                <img
+                  v-if="student.profile_picture"
+                  :src="student.profile_picture"
+                  :alt="student.full_name"
+                  class="avatar-img"
+                >
+                <img
+                  v-else
+                  :src="`https://ui-avatars.com/api/?name=${student.full_name ? student.full_name.split(' ').join('+') : 'U'}&background=e9ecef&color=6c757d&size=100&font-size=0.4&bold=true`"
+                  :alt="student.full_name"
+                  class="avatar-img"
+                >
+              </div>
+              <div class="name-status">
+                <h5 class="fw-bold mb-1 text-truncate w-100 px-2" :title="student.full_name">{{ student.full_name }}</h5>
+                <small class="small text-truncate" :title="student.status">
+                  {{ student.status }}
+                </small>
+              </div>
+              
+            </div>
+
+            <!-- Divided Stats -->
+            <div class="card-stats">
+              <div class="stat-box">
+                <span class="stat-label">Level</span>
+                <span class="stat-value">{{ student.level }}L</span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-box">
+                <span class="stat-label">Admitted</span>
+                <span class="stat-value">{{ student.year_of_admission || 'N/A' }}</span>
+              </div>
+            </div>
+
+            <!-- List Details -->
+            <div class="card-details">
+              <div class="detail-row">
+                <i class="bi bi-building text-primary"></i>
+                <span class="detail-text text-truncate" :title="student.school">{{ student.school }}</span>
+              </div>
+              <div class="detail-row">
+                <i class="bi bi-journal-text text-primary"></i>
+                <span class="detail-text text-truncate" :title="student.department">{{ student.department }}</span>
+              </div>
+              <div class="detail-row fee-row mt-2 pt-2 border-top">
+                <span class="fee-label">School Fees</span>
+                <span class="fee-value text-primary fw-bold">₦{{ formatCurrency(student.school_fees) }}</span>
+              </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="card-footer-actions">
+              <router-link :to="`/students/${student.id}`" class="btn btn-light-primary w-100">
+                <i class="bi bi-eye me-1"></i> View
+              </router-link>
+              <button class="btn btn-light-secondary w-100" @click="editStudent(student)">
+                <i class="bi bi-pencil me-1"></i> Edit
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="card-footer">
+        <nav aria-label="Students pagination">
+          <ul class="pagination justify-content-center mb-0">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+              <button class="page-link" @click="currentPage--" :disabled="currentPage === 1">
+                Previous
+              </button>
+            </li>
+            <li
+              v-for="page in visiblePages"
+              :key="page"
+              class="page-item"
+              :class="{ active: page === currentPage }"
+            >
+              <button class="page-link" @click="currentPage = page">{{ page }}</button>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+              <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPages">
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <!-- Add/Edit Student Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showAddModal || showEditModal" class="custom-modal-backdrop" @click.self="closeModal">
+        <div class="custom-modal-wrapper">
+          <div class="custom-modal-header">
+            <div class="header-titles">
+              <div class="header-icon" :class="{ 'edit-icon': isEditing }">
+                <i class="bi" :class="isEditing ? 'bi-pencil-square' : 'bi-person-plus-fill'"></i>
+              </div>
+              <div class="title-group">
+                <h3 class="custom-modal-title">{{ isEditing ? 'Edit Beneficiary' : 'New Beneficiary' }}</h3>
+                <p class="custom-modal-subtitle">{{ isEditing ? 'Update the details below' : 'Fill in the details to add a beneficiary' }}</p>
+              </div>
+            </div>
+            <button type="button" class="custom-close-btn" @click="closeModal" aria-label="Close">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          
+          <form @submit.prevent="handleSubmit" class="custom-modal-form">
+            <div class="custom-modal-body">
+              <div class="form-section">
+                <h4 class="section-title">Personal Information</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">Full Name <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.full_name" required placeholder="e.g. John Doe">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Email <span class="required">*</span></label>
+                    <input type="email" class="custom-input" v-model="studentForm.email" required placeholder="student@example.com">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Phone Number <span class="required">*</span></label>
+                    <input type="tel" class="custom-input" v-model="studentForm.phone_number" required placeholder="+234...">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Gender <span class="required">*</span></label>
+                    <select class="custom-select" v-model="studentForm.gender" required>
+                      <option value="" disabled>Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                  <div class="custom-input-group full-width">
+                    <label class="custom-label">Profile Picture URL</label>
+                    <div class="image-upload-wrapper">
+                      <div class="image-preview" v-if="previewUrl || studentForm.profile_picture">
+                        <img :src="previewUrl || studentForm.profile_picture" alt="Profile Preview" />
+                        <button type="button" class="remove-img-btn" @click="removeProfileImage" title="Remove image">
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </div>
+                      <div v-else class="image-placeholder" @click="$refs.profilePicInput.click()">
+                        <i class="bi bi-camera"></i>
+                        <span>Click to upload image</span>
+                      </div>
+                      <input type="file" ref="profilePicInput" class="custom-input file-input-hidden" @change="handleFileUpload" accept="image/*">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h4 class="section-title">Academic Details</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">School <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.school" required placeholder="University Name">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Department <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.department" required placeholder="Course of Study">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Course Duration (Years) <span class="required">*</span></label>
+                    <input type="number" min="1" max="10" class="custom-input" v-model="studentForm.course_duration" required placeholder="e.g. 4">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Year of Admission</label>
+                    <input type="number" min="1900" class="custom-input" v-model="studentForm.year_of_admission" placeholder="e.g. 2024">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Admission Letter URL</label>
+                    <input type="file" ref="admissionInput" class="custom-input" accept=".pdf,.doc,.docx" @change="handleAdmissionLetterUpload">
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <h4 class="section-title">Financial & Parent Info</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">Parent Name</label>
+                    <input type="text" class="custom-input" v-model="studentForm.parent_name" placeholder="Name of parent/guardian">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Parent Phone</label>
+                    <input type="tel" class="custom-input" v-model="studentForm.parent_phone" placeholder="Parent contact number">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Bank Name</label>
+                    <input type="text" class="custom-input" v-model="studentForm.bank_name" placeholder="Name of Bank">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Account Number</label>
+                    <input type="text" class="custom-input" v-model="studentForm.account_number" placeholder="Bank account number">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">School Fees (₦)</label>
+                    <input type="number" class="custom-input" v-model="studentForm.school_fees" placeholder="0">
+                  </div>
+                  <div class="custom-input-group full-width">
+                    <label class="custom-label">Remarks</label>
+                    <textarea class="custom-input custom-textarea" v-model="studentForm.remarks" rows="3" placeholder="Additional notes or remarks..."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="custom-modal-footer">
+              <button type="button" class="custom-btn custom-btn-outline" @click="closeModal">Cancel</button>
+              <button type="submit" class="custom-btn custom-btn-primary" :disabled="modalLoading">
+                <span v-if="modalLoading" class="loader-sm mr-2"></span>
+                <span v-else>{{ isEditing ? 'Save Changes' : 'Add Beneficiary' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
   </AdminLayout>
 </template>
 
 <script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import { useSupabaseStudents, supabase, isMock } from '../composables/useSupabase.js'
+
+const route = useRoute()
+const { getStudents, createStudent, updateStudent, deleteStudent } = useSupabaseStudents()
+
+const loading = ref(true)
+const modalLoading = ref(false)
+const students = ref([])
+const showAddModal = ref(false)
+const showEditModal = ref(false)
+const isEditing = ref(false)
+const editingStudent = ref(null)
+
+// Filters
+const showFiltersDropdown = ref(false)
+const searchQuery = ref('')
+const statusFilter = ref('graduated')
+const levelFilter = ref('')
+const schoolFilter = ref('')
+const genderFilter = ref('')
+
+const levels = ['100', '200', '300', '400', '500']
+const statuses = ['active', 'graduated', 'inactive', 'suspended']
+const genders = ['male', 'female']
+
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value) count++
+  if (levelFilter.value) count++
+  if (genderFilter.value) count++
+  return count
+})
+
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = ref(8)
+
+// Student form
+const studentForm = ref({
+  full_name: '',
+  email: '',
+  year_of_admission: '',
+  gender: '',
+  phone_number: '',
+  profile_picture: '',
+  school: '',
+  department: '',
+  course_duration: '',
+  parent_name: '',
+  parent_phone: '',
+  account_number: '',
+  bank_name: '',
+  school_fees: '',
+  remarks: '',
+  admission_letter_url: '',
+  // payments will be managed separately in detail view
+  status: 'active'
+})
+
+// File states
+const profilePictureFile = ref(null)
+const admissionLetterFile = ref(null)
+const profilePicInput = ref(null)
+const admissionInput = ref(null)
+const previewUrl = ref(null)
+
+// Computed properties
+const filteredStudents = computed(() => {
+  return students.value.filter(student => {
+    const matchesSearch = !searchQuery.value ||
+      student.full_name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (student.email || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      student.school.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      student.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (student.year_of_admission ? String(student.year_of_admission) : '').includes(searchQuery.value)
+
+    const matchesStatus = student.status === 'graduated'
+    const matchesLevel = !levelFilter.value || student.level === levelFilter.value
+    const matchesGender = !genderFilter.value || student.gender === genderFilter.value
+    const matchesSchool = !schoolFilter.value ||
+      student.school.toLowerCase().includes(schoolFilter.value.toLowerCase())
+
+    return matchesSearch && matchesStatus && matchesLevel && matchesGender && matchesSchool
+  })
+})
+
+const totalPages = computed(() => Math.ceil(filteredStudents.value.length / itemsPerPage.value))
+
+const visiblePages = computed(() => {
+  const pages = []
+  const start = Math.max(1, currentPage.value - 2)
+  const end = Math.min(totalPages.value, currentPage.value + 2)
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+
+  return pages
+})
+
+const paginatedStudents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredStudents.value.slice(start, end)
+})
+
+// Methods
+const loadStudents = async () => {
+  loading.value = true
+  try {
+    const { data, error } = await getStudents()
+    if (!error && data) {
+      students.value = data
+    }
+  } catch (err) {
+    console.error('Error loading students:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const getStatusBadgeClass = (status) => {
+  const classes = {
+    active: 'bg-success',
+    graduated: 'bg-info',
+    inactive: 'bg-warning',
+    suspended: 'bg-danger'
+  }
+  return classes[status] || 'bg-secondary'
+}
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-NG').format(amount || 0)
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  statusFilter.value = ''
+  levelFilter.value = ''
+  schoolFilter.value = ''
+  genderFilter.value = ''
+  currentPage.value = 1
+}
+
+const editStudent = (student) => {
+  isEditing.value = true
+  editingStudent.value = student
+  studentForm.value = { ...student }
+  // Reset file selections but PRESERVE existing URLs
+  profilePictureFile.value = null
+  admissionLetterFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
+  showEditModal.value = true
+}
+
+const handleFileUpload = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (event.target.accept?.includes('image')) {
+    profilePictureFile.value = file
+    // Create preview URL
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = URL.createObjectURL(file)
+  } else {
+    admissionLetterFile.value = file
+  }
+}
+
+const removeProfileImage = () => {
+  profilePictureFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
+  // If we want to allow removing existing image too:
+  if (!profilePictureFile.value) {
+    studentForm.value.profile_picture = ''
+  }
+  if (profilePicInput.value) profilePicInput.value.value = ''
+}
+
+const handleAdmissionLetterUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) admissionLetterFile.value = file
+}
+
+
+const closeModal = () => {
+  showAddModal.value = false
+  showEditModal.value = false
+  isEditing.value = false
+  editingStudent.value = null
+  profilePictureFile.value = null
+  admissionLetterFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
+  if (profilePicInput.value) profilePicInput.value.value = ''
+  if (admissionInput.value) admissionInput.value.value = ''
+  studentForm.value = {
+    full_name: '',
+    email: '',
+    year_of_admission: '',
+    gender: '',
+    phone_number: '',
+    profile_picture: '',
+    school: '',
+    department: '',
+    course_duration: '',
+    parent_name: '',
+    parent_phone: '',
+    account_number: '',
+    bank_name: '',
+    school_fees: '',
+    remarks: '',
+    admission_letter_url: '',
+    status: 'active'
+  }
+}
+
+const uploadFileToSupabase = async (file, bucket) => {
+  if (isMock) {
+    // Return a mock URL for development
+    return `https://mock-storage.com/${bucket}/${file.name}`
+  }
+  
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`
+  const filePath = `${fileName}`
+
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        contentType: file.type,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error(`Upload error to ${bucket}:`, uploadError)
+      throw uploadError
+    }
+
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath)
+      
+    if (!data || !data.publicUrl) {
+      throw new Error('Failed to generate public URL')
+    }
+
+    return data.publicUrl
+  } catch (err) {
+    console.error('File upload failed:', err)
+    throw err
+  }
+}
+
+const handleSubmit = async () => {
+  modalLoading.value = true
+
+  try {
+    // Dynamically calculate level, status, and years remaining before submit
+    const currentYear = new Date().getFullYear();
+    const admissionYear = Number(studentForm.value.year_of_admission);
+    const duration = Number(studentForm.value.course_duration);
+    
+    let calculatedLevel = '100';
+    let calculatedStatus = 'active';
+    let yearsRemaining = duration;
+
+    if (admissionYear && duration) {
+       const yearsPassed = currentYear - admissionYear;
+       
+       if (yearsPassed >= duration) {
+         calculatedStatus = 'graduated';
+         calculatedLevel = `${duration * 100}`;
+         yearsRemaining = 0;
+       } else {
+         calculatedStatus = 'active';
+         // Level is strictly based on years passed + 1
+         const levelValue = Math.max(1, yearsPassed + 1) * 100;
+         calculatedLevel = `${levelValue}`;
+         yearsRemaining = Math.max(0, duration - yearsPassed);
+       }
+    }
+
+    const formData = {
+      ...studentForm.value,
+      school_fees: parseFloat(studentForm.value.school_fees) || 0,
+      level: calculatedLevel,
+      status: calculatedStatus,
+      years_remaining: yearsRemaining
+    }
+    
+    // Upload profile picture if exists
+    if (profilePictureFile.value) {
+      const url = await uploadFileToSupabase(profilePictureFile.value, 'profile-pictures')
+      formData.profile_picture = url
+    }
+    
+    // Upload admission letter if exists
+    if (admissionLetterFile.value) {
+      const url = await uploadFileToSupabase(admissionLetterFile.value, 'beneficiary-files')
+      formData.admission_letter_url = url
+    }
+
+    if (isEditing.value) {
+      await updateStudent(editingStudent.value.id, formData)
+    } else {
+      await createStudent(formData)
+    }
+
+    await loadStudents()
+    closeModal()
+  } catch (err) {
+    console.error('Error saving student / uploading file:', err)
+    alert('There was an error saving the student record: ' + (err.message || err))
+  } finally {
+    modalLoading.value = false
+  }
+}
+
+const exportData = () => {
+  // Simple CSV export
+  const headers = ['Full Name', 'Email', 'Admission Year', 'Gender', 'Phone', 'School', 'Department', 'Level', 'Status', 'School Fees']
+  const csvContent = [
+    headers.join(','),
+    ...filteredStudents.value.map(student => [
+      `"${student.full_name}"`,
+      `"${student.email || ''}"`,
+      student.year_of_admission || '',
+      student.gender,
+      `"${student.phone_number}"`,
+      `"${student.school}"`,
+      `"${student.department}"`,
+      student.level,
+      student.status,
+      student.school_fees
+    ].join(','))
+  ].join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'students.csv'
+  a.click()
+  window.URL.revokeObjectURL(url)
+}
+
+// Watchers
+watch([searchQuery, statusFilter, levelFilter, schoolFilter, genderFilter], () => {
+  currentPage.value = 1
+})
+
+onMounted(async () => {
+  await loadStudents()
+  
+  // Check if we need to auto-edit a student from query param
+  if (route.query.edit) {
+    const studentToEdit = students.value.find(s => s.id === route.query.edit)
+    if (studentToEdit) {
+      editStudent(studentToEdit)
+    }
+  }
+})
 </script>
+
+<style scoped>
+
+.filters-section {
+  display: flex;
+  gap: 1rem;
+  /* margin-bottom: 1rem; */
+}
+
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 12px 16px 36px; /* space for icon */
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition-fast);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.card-footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border-primary);
+  padding: 1rem;
+}
+
+.table {
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.table th {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 1rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table-hover tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.table td {
+  border-bottom: 1px solid var(--border-primary);
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.btn-group .btn {
+  border-radius: 0;
+}
+
+.btn-group .btn:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.btn-group .btn:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+/* Custom Modal Styles */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-fade-enter-active .custom-modal-wrapper,
+.modal-fade-leave-active .custom-modal-wrapper {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+.modal-fade-enter-from .custom-modal-wrapper,
+.modal-fade-leave-to .custom-modal-wrapper {
+  transform: scale(0.95) translateY(-20px);
+}
+
+.custom-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.custom-modal-wrapper {
+  background: var(--bg-primary, #ffffff);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.custom-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 2rem;
+  background: var(--surface, #f8fafc);
+  border-bottom: 1px solid var(--border-primary, #e2e8f0);
+}
+
+.header-titles {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+  color: var(--color-primary, #2563eb);
+  border-radius: 14px;
+  font-size: 1.5rem;
+}
+
+.header-icon.edit-icon {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #f59e0b;
+}
+
+.title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.custom-modal-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  margin-top: 0.25rem;
+}
+
+.custom-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.custom-close-btn:hover {
+  background: var(--surface-hover, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+.custom-modal-form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.custom-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-primary, #e2e8f0);
+}
+
+.custom-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .custom-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.custom-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-input-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.custom-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #334155);
+}
+
+.required {
+  color: #ef4444;
+}
+
+.custom-input,
+.custom-select,
+.custom-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-primary, #cbd5e1);
+  border-radius: 10px;
+  color: var(--text-primary, #0f172a);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.custom-input::placeholder,
+.custom-textarea::placeholder {
+  color: var(--text-muted, #94a3b8);
+}
+
+.custom-input:focus,
+.custom-select:focus,
+.custom-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #3b82f6) 15%, transparent);
+}
+
+.custom-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Image Upload & Preview */
+.image-upload-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.image-preview {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid var(--border-primary, #e2e8f0);
+  margin-bottom: 0.5rem;
+  background: white;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-img-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.remove-img-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.image-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  border: 2px dashed var(--border-primary, #cbd5e1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text-muted, #94a3b8);
+  transition: all 0.2s;
+  background: var(--surface, #f8fafc);
+}
+
+.image-placeholder:hover {
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+  background: color-mix(in srgb, var(--color-primary, #3b82f6) 5%, transparent);
+}
+
+.image-placeholder i {
+  font-size: 1.5rem;
+}
+
+.image-placeholder span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+
+.custom-modal-footer {
+  padding: 1.5rem 2rem;
+  background: var(--surface, #f8fafc);
+  border-top: 1px solid var(--border-primary, #e2e8f0);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.custom-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.custom-btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-primary, #cbd5e1);
+  color: var(--text-secondary, #475569);
+}
+
+.custom-btn-outline:hover {
+  background: var(--surface-hover, #f1f5f9);
+  color: var(--text-primary, #0f172a);
+}
+
+.custom-btn-primary {
+  background: var(--color-primary, #3b82f6);
+  border: 1px solid var(--color-primary, #3b82f6);
+  color: #ffffff;
+}
+
+.custom-btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 80%, black);
+  border-color: color-mix(in srgb, var(--color-primary) 80%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.custom-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pagination .page-link {
+  background: var(--surface);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.pagination .page-link:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modern Card Grid */
+.beneficiaries-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 640px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1400px) {
+  .beneficiaries-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.beneficiary-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-2xl);
+  transition: transform 0.35s var(--spring), box-shadow 0.35s var(--spring), border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 1.25rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.beneficiary-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 4%, transparent) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.beneficiary-card:hover {
+  /* transform: translateY(-4px); */
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.beneficiary-card:hover::before {
+  opacity: 1;
+}
+
+
+.card-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.name-status {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.name-status h5 {
+  font-weight: 700;
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.name-status small {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.avatar-wrapper {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  transition: transform 0.3s var(--spring);
+}
+
+.beneficiary-card:hover .avatar-wrapper {
+  transform: scale(1.05);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-placeholder-lg {
+  background: linear-gradient(135deg, var(--color-primary), #10b981);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.card-stats {
+  display: flex;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 0.875rem 0;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-divider {
+  width: 1px;
+  background: var(--border-primary);
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.stat-value {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  padding: 0.25rem 0;
+}
+
+.detail-row i {
+  font-size: 1rem;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.detail-row:nth-child(1) i {
+  color: #0099ff;
+  background: rgba(0, 153, 255, 0.1);
+}
+.detail-row:nth-child(2) i {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.detail-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fee-row {
+  display: flex;
+  justify-content: space-between !important;
+  align-items: center;
+  border-top: 1px dashed color-mix(in srgb, var(--border-primary) 70%, transparent);
+  padding-top: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.fee-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fee-value {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-muted);
+}
+
+.card-footer-actions {
+  border-top: 1px dashed color-mix(in srgb, var(--border-primary) 70%, transparent);
+  display: flex;
+  gap: 0.625rem;
+  padding-top: 0.875rem;
+}
+
+.btn-light-primary {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.25s var(--spring);
+  width: 100%;
+  gap: 0.4rem;
+  letter-spacing: 0.01em;
+}
+
+.btn-light-primary:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  
+}
+
+.btn-light-secondary {
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  gap: 0.4rem;
+}
+
+.btn-light-secondary:hover {
+  background: var(--text-secondary);
+  color: white;
+  border-color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+</style>
