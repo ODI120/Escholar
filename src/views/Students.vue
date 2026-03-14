@@ -145,125 +145,164 @@
         </nav>
       </div>
     </div>
-
     <!-- Add/Edit Student Modal -->
-    <div class="modal" :class="{ show: showAddModal || showEditModal }" :style="{ display: (showAddModal || showEditModal) ? 'block' : 'none' }" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">{{ isEditing ? 'Edit Student' : 'Add New Student' }}</h5>
-            <button type="button" class="close-btn" @click="closeModal">&times;</button>
+    <Transition name="modal-fade">
+      <div v-if="showAddModal || showEditModal" class="custom-modal-backdrop" @click.self="closeModal">
+        <div class="custom-modal-wrapper">
+          <div class="custom-modal-header">
+            <div class="header-titles">
+              <div class="header-icon" :class="{ 'edit-icon': isEditing }">
+                <i class="bi" :class="isEditing ? 'bi-pencil-square' : 'bi-person-plus-fill'"></i>
+              </div>
+              <div class="title-group">
+                <h3 class="custom-modal-title">{{ isEditing ? 'Edit Beneficiary' : 'New Beneficiary' }}</h3>
+                <p class="custom-modal-subtitle">{{ isEditing ? 'Update the details below' : 'Fill in the details to add a beneficiary' }}</p>
+              </div>
+            </div>
+            <button type="button" class="custom-close-btn" @click="closeModal" aria-label="Close">
+              <i class="bi bi-x"></i>
+            </button>
           </div>
-          <form @submit.prevent="handleSubmit">
-            <div class="modal-body">
-              <div class="info-grid">
-                <div>
-                  <label class="form-label">Full Name *</label>
-                  <input type="text" class="form-control" v-model="studentForm.full_name" required>
+          
+          <form @submit.prevent="handleSubmit" class="custom-modal-form">
+            <div class="custom-modal-body">
+              <div class="form-section">
+                <h4 class="section-title">Personal Information</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">Full Name <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.full_name" required placeholder="e.g. John Doe">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Email <span class="required">*</span></label>
+                    <input type="email" class="custom-input" v-model="studentForm.email" required placeholder="student@example.com">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Phone Number <span class="required">*</span></label>
+                    <input type="tel" class="custom-input" v-model="studentForm.phone_number" required placeholder="+234...">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Gender <span class="required">*</span></label>
+                    <select class="custom-select" v-model="studentForm.gender" required>
+                      <option value="" disabled>Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                  <div class="custom-input-group full-width">
+                    <label class="custom-label">Profile Picture URL</label>
+                    <div class="image-upload-wrapper">
+                      <div class="image-preview" v-if="previewUrl || studentForm.profile_picture">
+                        <img :src="previewUrl || studentForm.profile_picture" alt="Profile Preview" />
+                        <button type="button" class="remove-img-btn" @click="removeProfileImage" title="Remove image">
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </div>
+                      <div v-else class="image-placeholder" @click="$refs.profilePicInput.click()">
+                        <i class="bi bi-camera"></i>
+                        <span>Click to upload image</span>
+                      </div>
+                      <input type="file" ref="profilePicInput" class="custom-input file-input-hidden" @change="handleFileUpload" accept="image/*">
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label class="form-label">Email *</label>
-                  <input type="email" class="form-control" v-model="studentForm.email" required placeholder="student@example.com">
+              </div>
+
+              <div class="form-section">
+                <h4 class="section-title">Academic Details</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">School <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.school" required placeholder="University Name">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Department <span class="required">*</span></label>
+                    <input type="text" class="custom-input" v-model="studentForm.department" required placeholder="Course of Study">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Level <span class="required">*</span></label>
+                    <select class="custom-select" v-model="studentForm.level" required>
+                      <option value="" disabled>Select Level</option>
+                      <option value="100">100 Level</option>
+                      <option value="200">200 Level</option>
+                      <option value="300">300 Level</option>
+                      <option value="400">400 Level</option>
+                      <option value="500">500 Level</option>
+                    </select>
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Year of Admission</label>
+                    <input type="number" min="1900" class="custom-input" v-model="studentForm.year_of_admission" placeholder="e.g. 2024">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Status <span class="required">*</span></label>
+                    <select class="custom-select" v-model="studentForm.status" required>
+                      <option value="" disabled>Select Status</option>
+                      <option value="active">Active Student</option>
+                      <option value="graduated">Graduated</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Admission Letter URL</label>
+                    <input type="file" ref="admissionInput" class="custom-input" accept=".pdf,.doc,.docx" @change="handleAdmissionLetterUpload">
+                  </div>
                 </div>
-                <div>
-                  <label class="form-label">Year of Admission</label>
-                  <input type="number" min="1900" class="form-control" v-model="studentForm.year_of_admission" placeholder="2024">
-                </div>
-                <div>
-                  <label class="form-label">Gender *</label>
-                  <select class="form-select" v-model="studentForm.gender" required>
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="form-label">Phone Number *</label>
-                  <input type="tel" class="form-control" v-model="studentForm.phone_number" required>
-                </div>
-                <div>
-                  <label class="form-label">Profile Picture URL</label>
-                  <input type="url" class="form-control" v-model="studentForm.profile_picture" placeholder="https://...">
-                </div>
-                <div>
-                  <label class="form-label">School *</label>
-                  <input type="text" class="form-control" v-model="studentForm.school" required>
-                </div>
-                <div>
-                  <label class="form-label">Department *</label>
-                  <input type="text" class="form-control" v-model="studentForm.department" required>
-                </div>
-                <div>
-                  <label class="form-label">Level *</label>
-                  <select class="form-select" v-model="studentForm.level" required>
-                    <option value="">Select Level</option>
-                    <option value="100">100 Level</option>
-                    <option value="200">200 Level</option>
-                    <option value="300">300 Level</option>
-                    <option value="400">400 Level</option>
-                    <option value="500">500 Level</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="form-label">Status *</label>
-                  <select class="form-select" v-model="studentForm.status" required>
-                    <option value="">Select Status</option>
-                    <option value="active">Active</option>
-                    <option value="graduated">Graduated</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="form-label">Parent Name</label>
-                  <input type="text" class="form-control" v-model="studentForm.parent_name">
-                </div>
-                <div>
-                  <label class="form-label">Parent Phone</label>
-                  <input type="tel" class="form-control" v-model="studentForm.parent_phone">
-                </div>
-                <div>
-                  <label class="form-label">Account Number</label>
-                  <input type="text" class="form-control" v-model="studentForm.account_number">
-                </div>
-                <div>
-                  <label class="form-label">Bank Name</label>
-                  <input type="text" class="form-control" v-model="studentForm.bank_name">
-                </div>
-                <div>
-                  <label class="form-label">School Fees (₦)</label>
-                  <input type="number" class="form-control" v-model="studentForm.school_fees" placeholder="0">
-                </div>
-                <div>
-                  <label class="form-label">Admission Letter URL</label>
-                  <input type="url" class="form-control" v-model="studentForm.admission_letter_url" placeholder="https://...">
-                </div>
-                <div>
-                  <label class="form-label">Remarks</label>
-                  <textarea class="form-control" v-model="studentForm.remarks" rows="3"></textarea>
+              </div>
+
+              <div class="form-section">
+                <h4 class="section-title">Financial & Parent Info</h4>
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">Parent Name</label>
+                    <input type="text" class="custom-input" v-model="studentForm.parent_name" placeholder="Name of parent/guardian">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Parent Phone</label>
+                    <input type="tel" class="custom-input" v-model="studentForm.parent_phone" placeholder="Parent contact number">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Bank Name</label>
+                    <input type="text" class="custom-input" v-model="studentForm.bank_name" placeholder="Name of Bank">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Account Number</label>
+                    <input type="text" class="custom-input" v-model="studentForm.account_number" placeholder="Bank account number">
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">School Fees (₦)</label>
+                    <input type="number" class="custom-input" v-model="studentForm.school_fees" placeholder="0">
+                  </div>
+                  <div class="custom-input-group full-width">
+                    <label class="custom-label">Remarks</label>
+                    <textarea class="custom-input custom-textarea" v-model="studentForm.remarks" rows="3" placeholder="Additional notes or remarks..."></textarea>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" @click="closeModal">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="modalLoading">
-                <span v-if="modalLoading" class="loader-sm me-2"></span>
-                {{ modalLoading ? 'Saving...' : (isEditing ? 'Update Student' : 'Add Student') }}
+            
+            <div class="custom-modal-footer">
+              <button type="button" class="custom-btn custom-btn-outline" @click="closeModal">Cancel</button>
+              <button type="submit" class="custom-btn custom-btn-primary" :disabled="modalLoading">
+                <span v-if="modalLoading" class="loader-sm mr-2"></span>
+                <span v-else>{{ isEditing ? 'Save Changes' : 'Add Beneficiary' }}</span>
               </button>
             </div>
           </form>
         </div>
       </div>
-    </div>
+    </Transition>
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
-import { useSupabaseStudents } from '../composables/useSupabase.js'
+import { useSupabaseStudents, supabase, isMock } from '../composables/useSupabase.js'
 
-const { getStudents, createStudent, updateStudent } = useSupabaseStudents()
+const route = useRoute()
+const { getStudents, createStudent, updateStudent, deleteStudent } = useSupabaseStudents()
 
 const loading = ref(true)
 const modalLoading = ref(false)
@@ -318,6 +357,13 @@ const studentForm = ref({
   // payments will be managed separately in detail view
   status: 'active'
 })
+
+// File states
+const profilePictureFile = ref(null)
+const admissionLetterFile = ref(null)
+const profilePicInput = ref(null)
+const admissionInput = ref(null)
+const previewUrl = ref(null)
 
 // Computed properties
 const filteredStudents = computed(() => {
@@ -401,14 +447,62 @@ const editStudent = (student) => {
   isEditing.value = true
   editingStudent.value = student
   studentForm.value = { ...student }
+  // Reset file selections but PRESERVE existing URLs
+  profilePictureFile.value = null
+  admissionLetterFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
   showEditModal.value = true
 }
+
+const handleFileUpload = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (event.target.accept?.includes('image')) {
+    profilePictureFile.value = file
+    // Create preview URL
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = URL.createObjectURL(file)
+  } else {
+    admissionLetterFile.value = file
+  }
+}
+
+const removeProfileImage = () => {
+  profilePictureFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
+  // If we want to allow removing existing image too:
+  if (!profilePictureFile.value) {
+    studentForm.value.profile_picture = ''
+  }
+  if (profilePicInput.value) profilePicInput.value.value = ''
+}
+
+const handleAdmissionLetterUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) admissionLetterFile.value = file
+}
+
 
 const closeModal = () => {
   showAddModal.value = false
   showEditModal.value = false
   isEditing.value = false
   editingStudent.value = null
+  profilePictureFile.value = null
+  admissionLetterFile.value = null
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = null
+  }
+  if (profilePicInput.value) profilePicInput.value.value = ''
+  if (admissionInput.value) admissionInput.value.value = ''
   studentForm.value = {
     full_name: '',
     email: '',
@@ -430,6 +524,44 @@ const closeModal = () => {
   }
 }
 
+const uploadFileToSupabase = async (file, bucket) => {
+  if (isMock) {
+    // Return a mock URL for development
+    return `https://mock-storage.com/${bucket}/${file.name}`
+  }
+  
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`
+  const filePath = `${fileName}`
+
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        contentType: file.type,
+        upsert: true
+      })
+
+    if (uploadError) {
+      console.error(`Upload error to ${bucket}:`, uploadError)
+      throw uploadError
+    }
+
+    const { data } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath)
+      
+    if (!data || !data.publicUrl) {
+      throw new Error('Failed to generate public URL')
+    }
+
+    return data.publicUrl
+  } catch (err) {
+    console.error('File upload failed:', err)
+    throw err
+  }
+}
+
 const handleSubmit = async () => {
   modalLoading.value = true
 
@@ -437,6 +569,18 @@ const handleSubmit = async () => {
     const formData = {
       ...studentForm.value,
       school_fees: parseFloat(studentForm.value.school_fees) || 0
+    }
+    
+    // Upload profile picture if exists
+    if (profilePictureFile.value) {
+      const url = await uploadFileToSupabase(profilePictureFile.value, 'profile-pictures')
+      formData.profile_picture = url
+    }
+    
+    // Upload admission letter if exists
+    if (admissionLetterFile.value) {
+      const url = await uploadFileToSupabase(admissionLetterFile.value, 'beneficiary-files')
+      formData.admission_letter_url = url
     }
 
     if (isEditing.value) {
@@ -448,7 +592,8 @@ const handleSubmit = async () => {
     await loadStudents()
     closeModal()
   } catch (err) {
-    console.error('Error saving student:', err)
+    console.error('Error saving student / uploading file:', err)
+    alert('There was an error saving the student record: ' + (err.message || err))
   } finally {
     modalLoading.value = false
   }
@@ -487,8 +632,16 @@ watch([searchQuery, statusFilter, levelFilter, schoolFilter, genderFilter], () =
   currentPage.value = 1
 })
 
-onMounted(() => {
-  loadStudents()
+onMounted(async () => {
+  await loadStudents()
+  
+  // Check if we need to auto-edit a student from query param
+  if (route.query.edit) {
+    const studentToEdit = students.value.find(s => s.id === route.query.edit)
+    if (studentToEdit) {
+      editStudent(studentToEdit)
+    }
+  }
 })
 </script>
 
@@ -610,61 +763,354 @@ onMounted(() => {
   border-bottom-right-radius: var(--radius-md);
 }
 
-.form-control, .form-select {
-  background: var(--input-bg) !important;
-  border-color: var(--input-border) !important;
-  color: var(--text-primary) !important;
+/* Custom Modal Styles */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.form-control:focus, .form-select:focus {
-  background: var(--input-bg) !important;
-  border-color: var(--color-primary) !important;
-  color: var(--text-primary) !important;
-  box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.25);
+.modal-fade-enter-active .custom-modal-wrapper,
+.modal-fade-leave-active .custom-modal-wrapper {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-content {
-  background: var(--surface);
-  color: var(--text-primary);
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 
-.modal-header {
-  border-bottom-color: var(--border-primary);
+.modal-fade-enter-from .custom-modal-wrapper,
+.modal-fade-leave-to .custom-modal-wrapper {
+  transform: scale(0.95) translateY(-20px);
 }
 
-.modal-footer {
-  border-top-color: var(--border-primary);
-}
-
-.modal {
+.custom-modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.custom-modal-wrapper {
+  background: var(--bg-primary, #ffffff);
+  border-radius: 20px;
   width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.custom-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 2rem;
+  background: var(--surface, #f8fafc);
+  border-bottom: 1px solid var(--border-primary, #e2e8f0);
+}
+
+.header-titles {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1050;
+  width: 48px;
+  height: 48px;
+  background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+  color: var(--color-primary, #2563eb);
+  border-radius: 14px;
+  font-size: 1.5rem;
 }
 
-.modal-dialog {
-  max-width: 800px;
-  width: 100%;
+.header-icon.edit-icon {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #f59e0b;
 }
 
-.close-btn {
-  background: none;
+.title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.custom-modal-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+  margin-top: 0.25rem;
+}
+
+.custom-close-btn {
+  background: transparent;
   border: none;
+  color: var(--text-muted, #64748b);
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
-  color: var(--text-secondary);
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.close-btn:hover {
-  color: var(--text-primary);
+.custom-close-btn:hover {
+  background: var(--surface-hover, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+}
+
+.custom-modal-form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.custom-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-primary, #e2e8f0);
+}
+
+.custom-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .custom-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.custom-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-input-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.custom-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #334155);
+}
+
+.required {
+  color: #ef4444;
+}
+
+.custom-input,
+.custom-select,
+.custom-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-primary, #cbd5e1);
+  border-radius: 10px;
+  color: var(--text-primary, #0f172a);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.custom-input::placeholder,
+.custom-textarea::placeholder {
+  color: var(--text-muted, #94a3b8);
+}
+
+.custom-input:focus,
+.custom-select:focus,
+.custom-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #3b82f6) 15%, transparent);
+}
+
+.custom-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Image Upload & Preview */
+.image-upload-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.image-preview {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid var(--border-primary, #e2e8f0);
+  margin-bottom: 0.5rem;
+  background: white;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-img-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.remove-img-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.image-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  border: 2px dashed var(--border-primary, #cbd5e1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text-muted, #94a3b8);
+  transition: all 0.2s;
+  background: var(--surface, #f8fafc);
+}
+
+.image-placeholder:hover {
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+  background: color-mix(in srgb, var(--color-primary, #3b82f6) 5%, transparent);
+}
+
+.image-placeholder i {
+  font-size: 1.5rem;
+}
+
+.image-placeholder span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+
+.custom-modal-footer {
+  padding: 1.5rem 2rem;
+  background: var(--surface, #f8fafc);
+  border-top: 1px solid var(--border-primary, #e2e8f0);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.custom-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.custom-btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-primary, #cbd5e1);
+  color: var(--text-secondary, #475569);
+}
+
+.custom-btn-outline:hover {
+  background: var(--surface-hover, #f1f5f9);
+  color: var(--text-primary, #0f172a);
+}
+
+.custom-btn-primary {
+  background: var(--color-primary, #3b82f6);
+  border: 1px solid var(--color-primary, #3b82f6);
+  color: #ffffff;
+}
+
+.custom-btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 80%, black);
+  border-color: color-mix(in srgb, var(--color-primary) 80%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.custom-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .pagination .page-link {
@@ -768,7 +1214,7 @@ onMounted(() => {
   box-sizing: border-box;
   overflow: hidden;
   background-color: #e0e0e0;
-  border: 3px solid color-mix(in srgb, var(--color-primary) 10%, transparent);;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);;
 }
 
 .avatar-img{
