@@ -250,6 +250,10 @@
                     <input type="text" class="custom-input" v-model="studentForm.bank_name" placeholder="Name of Bank">
                   </div>
                   <div class="custom-input-group">
+                    <label class="custom-label">Account Name</label>
+                    <input type="text" class="custom-input" v-model="studentForm.account_name" placeholder="Name on bank account">
+                  </div>
+                  <div class="custom-input-group">
                     <label class="custom-label">Account Number</label>
                     <input type="text" class="custom-input" v-model="studentForm.account_number" placeholder="Bank account number">
                   </div>
@@ -334,6 +338,7 @@ const studentForm = ref({
   parent_name: '',
   parent_phone: '',
   account_number: '',
+  account_name: '',
   bank_name: '',
   school_fees: '',
   remarks: '',
@@ -500,6 +505,7 @@ const closeModal = () => {
     parent_name: '',
     parent_phone: '',
     account_number: '',
+    account_name: '',
     bank_name: '',
     school_fees: '',
     remarks: '',
@@ -595,10 +601,30 @@ const handleSubmit = async () => {
       formData.admission_letter_url = url
     }
 
+    const databaseColumns = [
+      'full_name', 'email', 'year_of_admission', 'gender', 'phone_number', 
+      'profile_picture', 'school', 'department', 'level', 'parent_name', 
+      'parent_phone', 'account_number', 'account_name', 'bank_name', 
+      'school_fees', 'remarks', 'admission_letter_url', 'status',
+      'course_duration', 'years_remaining'
+    ]
+
+    const sanitizedData = {}
+    databaseColumns.forEach(col => {
+      if (formData[col] !== undefined) {
+        sanitizedData[col] = formData[col]
+      }
+    })
+
+    let result
     if (isEditing.value) {
-      await updateStudent(editingStudent.value.id, formData)
+      result = await updateStudent(editingStudent.value.id, sanitizedData)
     } else {
-      await createStudent(formData)
+      result = await createStudent(sanitizedData)
+    }
+
+    if (result.error) {
+      throw result.error
     }
 
     await loadStudents()

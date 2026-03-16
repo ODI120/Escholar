@@ -92,12 +92,18 @@ export const useSupabaseStudents = () => {
       gender: 'male',
       phone_number: '08012345678',
       year_of_admission: 2021,
+      account_number: '1234567890',
+      account_name: 'John Doe',
+      bank_name: 'First Bank',
       school_fees: 150000,
       profile_picture: 'https://i.pravatar.cc/150?u=1',
       admission_letter_url: 'https://example.com/admission1.pdf',
       payments: [
         { id: 'p1', date: '2023-01-15', amount: 150000, description: 'First semester fees', status: 'paid' },
         { id: 'p2', date: '2023-08-20', amount: 150000, description: 'Second semester fees', status: 'paid' }
+      ],
+      academic_records: [
+        { id: 'a1', semester: '1st Semester', session: '2021/2022', gpa: 4.2, evidence_url: 'https://example.com/result1.pdf', created_at: '2022-02-10T10:00:00Z' }
       ],
       status: 'active',
       created_at: '2023-01-10T10:00:00Z'
@@ -113,12 +119,16 @@ export const useSupabaseStudents = () => {
       gender: 'female',
       phone_number: '07098765432',
       year_of_admission: 2022,
+      account_number: '0987654321',
+      account_name: 'Jane Smith',
+      bank_name: 'GTBank',
       school_fees: 250000,
       profile_picture: 'https://i.pravatar.cc/150?u=2',
       admission_letter_url: 'https://example.com/admission2.pdf',
       payments: [
         { id: 'p3', date: '2023-02-10', amount: 250000, description: 'Session fees', status: 'paid' }
       ],
+      academic_records: [],
       status: 'active',
       created_at: '2023-02-05T10:00:00Z'
     },
@@ -133,11 +143,18 @@ export const useSupabaseStudents = () => {
       gender: 'male',
       phone_number: '08123456789',
       year_of_admission: 2018,
+      account_number: '1122334455',
+      account_name: 'Michael Johnson',
+      bank_name: 'Zenith Bank',
       school_fees: 180000,
       profile_picture: 'https://i.pravatar.cc/150?u=3',
       admission_letter_url: 'https://example.com/admission3.pdf',
       payments: [
         { id: 'p4', date: '2022-05-01', amount: 180000, description: 'Final payment', status: 'paid' }
+      ],
+      academic_records: [
+        { id: 'a2', semester: '1st Semester', session: '2021/2022', gpa: 3.8, evidence_url: '', created_at: '2022-02-15T10:00:00Z' },
+        { id: 'a3', semester: '2nd Semester', session: '2021/2022', gpa: 4.5, evidence_url: 'https://example.com/result3.pdf', created_at: '2022-08-10T10:00:00Z' }
       ],
       status: 'active',
       created_at: '2024-01-10T10:00:00Z'
@@ -158,6 +175,7 @@ export const useSupabaseStudents = () => {
       parent_name: 'Mrs. Johnson',
       parent_phone: '+2348012345679',
       account_number: '1234567890',
+      account_name: 'Adebayo Johnson',
       bank_name: 'First Bank',
       school_fees: 150000,
       remarks: 'Excellent candidate',
@@ -185,6 +203,7 @@ export const useSupabaseStudents = () => {
       parent_name: 'Mr. Abdul',
       parent_phone: '+2348023456790',
       account_number: '0987654321',
+      account_name: 'Fatima Abdul',
       bank_name: 'GTBank',
       school_fees: 250000,
       remarks: 'Needs financial aid',
@@ -209,6 +228,7 @@ export const useSupabaseStudents = () => {
       parent_name: 'Mrs. Nwosu',
       parent_phone: '+2348034567891',
       account_number: '1122334455',
+      account_name: 'Chukwuemeka Nwosu',
       bank_name: 'Zenith Bank',
       school_fees: 180000,
       remarks: 'Graduated with honours',
@@ -241,7 +261,9 @@ export const useSupabaseStudents = () => {
       if (data) {
         // fetch payments for the student
         const { data: payments } = await supabase.from('payments').select('*').eq('student_id', id).order('date', { ascending: false })
-        return { data: { ...data, payments: payments || [] }, error: null }
+        // fetch academic records for the student
+        const { data: academicRecords } = await supabase.from('academic_records').select('*').eq('student_id', id).order('created_at', { ascending: false })
+        return { data: { ...data, payments: payments || [], academic_records: academicRecords || [] }, error: null }
       }
       return { data: null, error }
     } catch (err) {
@@ -317,5 +339,23 @@ export const useSupabaseStudents = () => {
     }
   }
 
-  return { getStudents, getStudent, createStudent, updateStudent, deleteStudent, createPayment }
+  const createAcademicRecord = async (record) => {
+    if (isMock) {
+      const newRecord = { id: `a-${Date.now()}`, ...record, created_at: new Date().toISOString() }
+      const student = mockStudents.find(s => s.id === record.student_id)
+      if (student) {
+        if (!student.academic_records) student.academic_records = []
+        student.academic_records.unshift(newRecord)
+      }
+      return { data: newRecord, error: null }
+    }
+    try {
+      const { data, error } = await supabase.from('academic_records').insert([record]).select().single()
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Unable to record GPA.' } }
+    }
+  }
+
+  return { getStudents, getStudent, createStudent, updateStudent, deleteStudent, createPayment, createAcademicRecord }
 }

@@ -184,9 +184,8 @@
               </div>
             </div>
           </div>
-
-          <!-- Payment History -->
-          <div class="detail-card">
+                  <!-- Payment History -->
+          <div class="detail-card mb-4">
             <div class="card-head between">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-credit-card-fill"></i>
@@ -226,6 +225,62 @@
               </div>
             </div>
           </div>
+
+          <!-- Academic Performance -->
+          <div class="detail-card mb-4">
+            <div class="card-head between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-mortarboard-fill"></i>
+                <h3>Academic Performance</h3>
+              </div>
+              <button class="add-btn-sm" @click="addAcademicRecord">
+                <i class="bi bi-plus-lg"></i> Record GPA
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <div v-if="student.academic_records && student.academic_records.length > 0" class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Semester</th>
+                      <th>Level</th>
+                      <th>GPA</th>
+                      <th>Status</th>
+                      <th>Evidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="record in student.academic_records" :key="record.id">
+                      <td>{{ record.semester }}</td>
+                      <td>{{ record.session }}</td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="fw-bold fs-5">{{ record.gpa }}</span>
+                          <span v-if="record.gpa >= 4.0" class="incentive-badge" title="Eligible for GPA Incentive">
+                            <i class="bi bi-star-fill"></i> Incentive
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span v-if="record.gpa >= 4.0" class="badge bg-success-subtle text-success border border-success-subtle">Elite</span>
+                        <span v-else class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Standard</span>
+                      </td>
+                      <td>
+                        <a v-if="record.evidence_url" :href="record.evidence_url" target="_blank" class="btn-icon-link" title="View Evidence">
+                          <i class="bi bi-file-earmark-check"></i>
+                        </a>
+                        <span v-else class="text-muted small">No evidence</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="empty-payments py-5">
+                <i class="bi bi-award"></i>
+                <p>No academic records found. Record a GPA to track performance.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Right Column: Sidebar Actions & Financials -->
@@ -254,6 +309,7 @@
                   <i class="bi bi-bank"></i>
                   <div class="bank-det">
                     <span class="bank-name">{{ student.bank_name || 'N/A' }}</span>
+                    <span class="bank-acc-name">{{ student.account_name || 'No Account Name' }}</span>
                     <span class="bank-acc">{{ student.account_number || 'No Account Number' }}</span>
                   </div>
                 </div>
@@ -296,12 +352,10 @@
                 <p v-if="student.updated_at">Last updated {{ formatDate(student.updated_at) }}</p>
              </div>
           </div>
-        <div class="header-right">
           <button class="action-btn delete-btn" @click="showDeleteModal = true">
             <i class="bi bi-trash3"></i>
             <span>Delete</span>
           </button>
-          </div>
         </div>
       </div>
     </div>
@@ -387,6 +441,74 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Add Academic Record Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showAcademicModal" class="modal-overlay" @click.self="showAcademicModal = false">
+        <div class="payment-modal form-card">
+          <div class="card-head between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="icon-box-sm success">
+                <i class="bi bi-award"></i>
+              </div>
+              <h3>Record Semester GPA</h3>
+            </div>
+            <button class="close-btn" @click="showAcademicModal = false" :disabled="academicLoading">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          
+          <form @submit.prevent="submitAcademicRecord" class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Semester <span class="text-danger">*</span></label>
+                  <select v-model="academicForm.semester" class="form-control" required>
+                    <option value="" disabled>Select Semester</option>
+                    <option value="1st Semester">1st Semester</option>
+                    <option value="2nd Semester">2nd Semester</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>Level <span class="text-danger">*</span></label>
+                  <input type="text" v-model="academicForm.session" class="form-control" placeholder="e.g. 100L" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group mt-3">
+              <label>GPA (0.00 - 5.00) <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <i class="bi bi-calculator"></i>
+                <input type="number" v-model="academicForm.gpa" class="form-control" required min="0" max="5.0" step="0.01" placeholder="e.g. 4.25">
+              </div>
+              <div v-if="academicForm.gpa >= 4.0" class="mt-1">
+                <small class="text-success fw-600"><i class="bi bi-stars"></i> This student is eligible for the high performance incentive!</small>
+              </div>
+            </div>
+
+            <div class="form-group mt-3 mb-4">
+              <label>Evidence (Result/Transcript) <span class="text-danger">*</span></label>
+              <div class="file-upload-wrapper">
+                <input type="file" @change="handleFileUpload" class="form-control" accept=".pdf,image/*">
+                <div class="form-text mt-1">Upload a clear PDF or image of the result as evidence.</div>
+              </div>
+            </div>
+
+            <div class="modal-actions pt-2 border-top">
+              <button type="button" class="btn-light-secondary" @click="showAcademicModal = false" :disabled="academicLoading">Cancel</button>
+              <button type="submit" class="btn-primary" :disabled="academicLoading">
+                <span v-if="academicLoading" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check2-circle me-1"></i>
+                {{ academicLoading ? 'Saving...' : 'Record GPA' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
   </AdminLayout>
 </template>
 
@@ -398,7 +520,7 @@ import { useSupabaseStudents } from '../composables/useSupabase.js'
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent, deleteStudent, createPayment } = useSupabaseStudents()
+const { getStudent, deleteStudent, createPayment, createAcademicRecord } = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
@@ -409,6 +531,16 @@ const deleteLoading = ref(false)
 const showPaymentModal = ref(false)
 const paymentLoading = ref(false)
 const paymentForm = ref({ amount: '', description: '', date: new Date().toISOString().split('T')[0] })
+
+const showAcademicModal = ref(false)
+const academicLoading = ref(false)
+const academicEvidenceFile = ref(null)
+const academicForm = ref({
+  semester: '',
+  session: '',
+  gpa: '',
+  student_id: ''
+})
 
 const loadStudent = async () => {
   loading.value = true
@@ -511,6 +643,57 @@ const submitPayment = async () => {
 
 const markAsPaid = () => {
   console.log('Mark as paid for student:', student.value.id)
+}
+
+const addAcademicRecord = () => {
+  academicForm.value = {
+    semester: '',
+    session: '',
+  gpa: '',
+    student_id: student.value.id
+  }
+  academicEvidenceFile.value = null
+  showAcademicModal.value = true
+}
+
+const handleFileUpload = (event) => {
+  academicEvidenceFile.value = event.target.files[0]
+}
+
+const submitAcademicRecord = async () => {
+  academicLoading.value = true
+  try {
+    let evidence_url = ''
+    
+    // In a real app, we would upload to Supabase storage here
+    // For now, if mock or for simplicity, we'll use a placeholder or handle it like profile pics
+    if (academicEvidenceFile.value) {
+      // simulate upload or just use a dummy URL if mock
+      evidence_url = `https://storage.placeholder.com/evidence/${student.value.id}/${Date.now()}`
+    }
+
+    const payload = {
+      ...academicForm.value,
+      evidence_url,
+      student_id: student.value.id
+    }
+
+    const { data, error } = await createAcademicRecord(payload)
+    if (error) throw error
+    
+    if (!student.value.academic_records) student.value.academic_records = []
+    student.value.academic_records.unshift(data)
+    showAcademicModal.value = false
+    
+    if (payload.gpa >= 4.0) {
+      alert('Congratulations! This student is eligible for the High Performance Incentive.')
+    }
+  } catch (err) {
+    console.error('Error saving GPA record:', err)
+    alert('Failed to save academic record. Please try again.')
+  } finally {
+    academicLoading.value = false
+  }
 }
 
 const exportProfile = () => {
@@ -1623,6 +1806,54 @@ onMounted(() => {
 .empty-payments i {
   font-size: 2.5rem;
   opacity: 0.5;
+}
+
+.incentive-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  animation: pulse-gold 2s infinite;
+}
+
+@keyframes pulse-gold {
+  0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(250, 204, 21, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+.btn-icon-link {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--color-primary);
+  border: 1px solid var(--border-primary);
+  transition: all 0.2s;
+}
+
+.btn-icon-link:hover {
+  background: var(--color-primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.file-upload-wrapper {
+  position: relative;
+}
+
+.icon-box-sm.success {
+  background: #d1fae5;
+  color: #059669;
 }
 
 /* =========================================

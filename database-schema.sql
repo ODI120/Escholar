@@ -19,7 +19,10 @@ create table if not exists public.students (
   parent_name text,
   parent_phone text,
   account_number text,
+  account_name text,
   bank_name text,
+  course_duration integer,
+  years_remaining integer,
   school_fees numeric(12,2) default 0,
   remarks text,
   admission_letter_url text,
@@ -41,6 +44,17 @@ create table if not exists public.payments (
   created_at timestamptz default now()
 );
 
+-- Create academic_records table (for GPA tracking)
+create table if not exists public.academic_records (
+  id uuid default gen_random_uuid() primary key,
+  student_id uuid references public.students(id) on delete cascade,
+  semester text not null,
+  session text not null,
+  gpa numeric(3,2) not null check (gpa >= 0 and gpa <= 5.0),
+  evidence_url text,
+  created_at timestamptz default now()
+);
+
 -- Optional admins table to hold admin profiles (auth is handled separately by Supabase Auth)
 create table if not exists public.admins (
   id uuid default gen_random_uuid() primary key,
@@ -58,6 +72,7 @@ create index if not exists idx_students_level on public.students (level);
 create index if not exists idx_students_school on public.students (school);
 create index if not exists idx_payments_student_id on public.payments (student_id);
 create index if not exists idx_payments_date on public.payments (date);
+create index if not exists idx_academic_records_student_id on public.academic_records (student_id);
 
 -- View: total received per student (useful for dashboard + detail pages)
 create or replace view public.student_totals as
@@ -73,6 +88,13 @@ group by s.id, s.full_name;
 -- Administrators should create appropriate RLS policies for their auth model.
 alter table public.students enable row level security;
 alter table public.payments enable row level security;
+alter table public.academic_records enable row level security;
+
+-- Performance policies (allow all for dev/testing if needed, or structured)
+-- For now, we follow the user's setup which seems to have RLS enabled but might need policies
+create policy "Allow all for students" on public.students for all using (true) with check (true);
+create policy "Allow all for payments" on public.payments for all using (true) with check (true);
+create policy "Allow all for academic_records" on public.academic_records for all using (true) with check (true);
 
 -- Example development policies (UNCOMMENT & ADJUST for production):
 -- Allow authenticated users to select rows (example only)
@@ -85,11 +107,11 @@ alter table public.payments enable row level security;
 DO $$
 BEGIN
   IF (SELECT COUNT(*) FROM public.students) = 0 THEN
-    INSERT INTO public.students (id, full_name, email, year_of_admission, gender, phone_number, profile_picture, school, department, level, parent_name, parent_phone, account_number, bank_name, school_fees, remarks, admission_letter_url, status, created_at)
+    INSERT INTO public.students (id, full_name, email, year_of_admission, gender, phone_number, profile_picture, school, department, level, parent_name, parent_phone, account_number, account_name, bank_name, course_duration, years_remaining, school_fees, remarks, admission_letter_url, status, created_at)
     VALUES
-      ('11111111-1111-1111-1111-111111111111'::uuid,'Adebayo Johnson','adebayo.johnson@example.com',2022,'male','+2348012345678','https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150','University of Lagos','Computer Science','200','Mrs. Johnson','+2348012345679','1234567890','First Bank',150000.00,'Excellent candidate','https://example.com/admission1.pdf','active','2024-01-15T10:00:00Z'::timestamptz),
-      ('22222222-2222-2222-2222-222222222222'::uuid,'Fatima Abdul','fatima.abdul@example.com',2021,'female','+2348023456789','https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150','University of Ibadan','Medicine','300','Mr. Abdul','+2348023456790','0987654321','GTBank',250000.00,'Needs financial aid','https://example.com/admission2.pdf','active','2024-01-10T10:00:00Z'::timestamptz),
-      ('33333333-3333-3333-3333-333333333333'::uuid,'Chukwuemeka Nwosu','chukwuemeka.nwosu@example.com',2018,'male','+2348034567890','https://images.unsplash.com/photo-1472099645785-5658ab4ff4e?w=150','Obafemi Awolowo University','Engineering','400','Mrs. Nwosu','+2348034567891','1122334455','Zenith Bank',180000.00,'Graduated with honours','https://example.com/admission3.pdf','graduated','2023-09-01T10:00:00Z'::timestamptz);
+      ('11111111-1111-1111-1111-111111111111'::uuid,'Adebayo Johnson','adebayo.johnson@example.com',2022,'male','+2348012345678','https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150','University of Lagos','Computer Science','200','Mrs. Johnson','+2348012345679','1234567890','Adebayo Johnson','First Bank',4,2,150000.00,'Excellent candidate','https://example.com/admission1.pdf','active','2024-01-15T10:00:00Z'::timestamptz),
+      ('22222222-2222-2222-2222-222222222222'::uuid,'Fatima Abdul','fatima.abdul@example.com',2021,'female','+2348023456789','https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150','University of Ibadan','Medicine','300','Mr. Abdul','+2348023456790','0987654321','Fatima Abdul','GTBank',6,3,250000.00,'Needs financial aid','https://example.com/admission2.pdf','active','2024-01-10T10:00:00Z'::timestamptz),
+      ('33333333-3333-3333-3333-333333333333'::uuid,'Chukwuemeka Nwosu','chukwuemeka.nwosu@example.com',2018,'male','+2348034567890','https://images.unsplash.com/photo-1472099645785-5658ab4ff4e?w=150','Obafemi Awolowo University','Engineering','400','Mrs. Nwosu','+2348034567891','1122334455','Chukwuemeka Nwosu','Zenith Bank',5,0,180000.00,'Graduated with honours','https://example.com/admission3.pdf','graduated','2023-09-01T10:00:00Z'::timestamptz);
   END IF;
 END$$;
 
