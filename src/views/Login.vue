@@ -72,10 +72,11 @@
 <script setup>
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import { useSupabaseAuth } from '../composables/useSupabase.js'
+  import { useSupabaseAuth, useSupabaseAdmins } from '../composables/useSupabase.js'
 
   const router = useRouter()
   const { signIn, getCurrentUser } = useSupabaseAuth()
+  const { ensureAdminForUser } = useSupabaseAdmins()
 
   const form = ref({
     email: '',
@@ -95,6 +96,17 @@
       if (signInError) {
         error.value = signInError.message
       } else {
+        // Ensure this authenticated user has an admin record
+        try {
+          const { data: userData } = await getCurrentUser()
+          if (userData?.user) {
+            await ensureAdminForUser(userData.user)
+          }
+        } catch (e) {
+          // non-fatal for login; ignore admin sync errors here
+          console.warn('Failed to sync admin for user:', e)
+        }
+
         router.push('/dashboard')
       }
     } catch (err) {

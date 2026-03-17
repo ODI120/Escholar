@@ -167,13 +167,18 @@
               <div class="doc-links">
                 <label class="info-lbl-sm">Uploaded Documents</label>
                 <div class="doc-grid">
-                  <a v-if="student.admission_letter_url" :href="student.admission_letter_url" target="_blank" class="doc-item">
+                  <a
+                    v-if="student.admission_letter_url"
+                    :href="student.admission_letter_url"
+                    download
+                    class="doc-item"
+                  >
                     <div class="doc-icon pdf">
                       <i class="bi bi-file-earmark-pdf"></i>
                     </div>
                     <div class="doc-info">
                       <span class="doc-name">Admission Letter</span>
-                      <span class="doc-meta">View Document <i class="bi bi-box-arrow-up-right"></i></span>
+                      <span class="doc-meta">Download Document <i class="bi bi-download"></i></span>
                     </div>
                   </a>
                   <div v-else class="no-docs">
@@ -266,7 +271,13 @@
                         <span v-else class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Standard</span>
                       </td>
                       <td>
-                        <a v-if="record.evidence_url" :href="record.evidence_url" target="_blank" class="btn-icon-link" title="View Evidence">
+                        <a
+                          v-if="record.evidence_url"
+                          :href="record.evidence_url"
+                          download
+                          class="btn-icon-link"
+                          title="Download Evidence"
+                        >
                           <i class="bi bi-file-earmark-check"></i>
                         </a>
                         <span v-else class="text-muted small">No evidence</span>
@@ -520,7 +531,7 @@ import { useSupabaseStudents } from '../composables/useSupabase.js'
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent, deleteStudent, createPayment, createAcademicRecord } = useSupabaseStudents()
+const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence } = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
@@ -665,15 +676,16 @@ const submitAcademicRecord = async () => {
   try {
     let evidence_url = ''
     
-    // In a real app, we would upload to Supabase storage here
-    // For now, if mock or for simplicity, we'll use a placeholder or handle it like profile pics
     if (academicEvidenceFile.value) {
-      // simulate upload or just use a dummy URL if mock
-      evidence_url = `https://storage.placeholder.com/evidence/${student.value.id}/${Date.now()}`
+      const { url, error } = await uploadAcademicEvidence(student.value.id, academicEvidenceFile.value)
+      if (error) throw error
+      evidence_url = url
     }
 
     const payload = {
       ...academicForm.value,
+      // Ensure types match typical DB schemas (numeric gpa, string fields)
+      gpa: academicForm.value.gpa === '' ? null : Number.parseFloat(academicForm.value.gpa),
       evidence_url,
       student_id: student.value.id
     }
@@ -685,12 +697,12 @@ const submitAcademicRecord = async () => {
     student.value.academic_records.unshift(data)
     showAcademicModal.value = false
     
-    if (payload.gpa >= 4.0) {
+    if ((payload.gpa ?? 0) >= 4.0) {
       alert('Congratulations! This student is eligible for the High Performance Incentive.')
     }
   } catch (err) {
     console.error('Error saving GPA record:', err)
-    alert('Failed to save academic record. Please try again.')
+    alert(err?.message ? `Failed to save academic record: ${err.message}` : 'Failed to save academic record. Please try again.')
   } finally {
     academicLoading.value = false
   }

@@ -57,6 +57,12 @@ const routes = [
     name: 'Settings',
     component: () => import('./views/Settings.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin-profile',
+    name: 'AdminProfile',
+    component: () => import('./views/AdminProfile.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

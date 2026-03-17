@@ -79,6 +79,44 @@ export const useSupabaseAuth = () => {
 
 // Students helpers
 export const useSupabaseStudents = () => {
+  const uploadAcademicEvidence = async (studentId, file) => {
+    if (!file || !studentId) return { url: '', error: null }
+
+    // Mock mode: return a local preview URL only (not persisted)
+    if (isMock) {
+      try {
+        return { url: URL.createObjectURL(file), error: null }
+      } catch (err) {
+        return { url: '', error: { message: err?.message || 'Unable to create preview URL.' } }
+      }
+    }
+
+    try {
+      // IMPORTANT: this must match your Supabase Storage bucket name exactly
+      const bucket = 'academic-evidence'
+      const safeName = String(file.name || 'evidence')
+        .replace(/[^\w.\-]+/g, '_')
+        .replace(/_+/g, '_')
+      const path = `${studentId}/${Date.now()}-${safeName}`
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || undefined
+        })
+
+      if (uploadError) return { url: '', error: uploadError }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return { url: data?.publicUrl || '', error: null }
+    } catch (err) {
+      return { url: '', error: { message: err?.message || 'Evidence upload failed.' } }
+    }
+  }
+
   // Mock data for development
   const mockStudents = [
     {
@@ -357,5 +395,170 @@ export const useSupabaseStudents = () => {
     }
   }
 
-  return { getStudents, getStudent, createStudent, updateStudent, deleteStudent, createPayment, createAcademicRecord }
+  return {
+    getStudents,
+    getStudent,
+    createStudent,
+    updateStudent,
+    deleteStudent,
+    createPayment,
+    createAcademicRecord,
+    uploadAcademicEvidence
+  }
+}
+
+// Admin helpers
+export const useSupabaseAdmins = () => {
+  const mockAdmins = [
+    {
+      id: '1',
+      name: 'Super Admin',
+      full_name: 'Super Admin',
+      email: 'superadmin@escholar.com',
+      role: 'owner',
+      status: 'active',
+      last_active: null,
+      created_at: 'Today'
+    },
+    {
+      id: '2',
+      name: 'Finance Admin',
+      full_name: 'Finance Admin',
+      email: 'finance@escholar.com',
+      role: 'admin',
+      status: 'active',
+      last_active: null,
+      created_at: '2 days ago'
+    }
+  ]
+
+  const getAdmins = async () => {
+    if (isMock) {
+      return { data: mockAdmins, error: null }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      return { data: data || [], error }
+    } catch (err) {
+      return {
+        data: [],
+        error: { message: err.message || 'Unable to fetch admins.' }
+      }
+    }
+  }
+
+  const createAdmin = async (admin) => {
+    const base = {
+      email: admin.email,
+      role: admin.role || 'admin',
+      status: admin.status || 'active'
+    }
+
+    if (isMock) {
+      const record = { id: String(Date.now()), ...base, last_active: '—' }
+      mockAdmins.unshift(record)
+      return { data: record, error: null }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .insert([base])
+        .select()
+        .single()
+
+      return { data, error }
+    } catch (err) {
+      return {
+        data: null,
+        error: { message: err.message || 'Unable to create admin.' }
+      }
+    }
+  }
+
+  const updateAdmin = async (id, updates) => {
+    if (isMock) {
+      const idx = mockAdmins.findIndex(a => a.id === id)
+      if (idx === -1) {
+        return { data: null, error: { message: 'Admin not found' } }
+      }
+      mockAdmins[idx] = { ...mockAdmins[idx], ...updates }
+      return { data: mockAdmins[idx], error: null }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      return { data, error }
+    } catch (err) {
+      return {
+        data: null,
+        error: { message: err.message || 'Unable to update admin.' }
+      }
+    }
+  }
+
+  const ensureAdminForUser = async (user) => {
+    if (!user?.email) return { data: null, error: null }
+
+    if (isMock) {
+      const existing = mockAdmins.find(a => a.email === user.email)
+      if (existing) return { data: existing, error: null }
+      const record = {
+        id: String(Date.now()),
+        name: user.user_metadata?.full_name || user.email.split('@')[0],
+        email: user.email,
+        role: 'owner',
+        status: 'active',
+        last_active: 'Today'
+      }
+      mockAdmins.unshift(record)
+      return { data: record, error: null }
+    }
+
+    try {
+      const { data: existing, error } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', user.email)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        return { data: null, error }
+      }
+
+      if (existing) return { data: existing, error: null }
+
+      const payload = {
+        email: user.email,
+        role: 'owner',
+        status: 'active'
+      }
+
+      const { data: created, error: createError } = await supabase
+        .from('admins')
+        .insert([payload])
+        .select()
+        .single()
+
+      return { data: created, error: createError }
+    } catch (err) {
+      return {
+        data: null,
+        error: { message: err.message || 'Unable to sync admin record.' }
+      }
+    }
+  }
+
+  return { getAdmins, createAdmin, updateAdmin, ensureAdminForUser }
 }

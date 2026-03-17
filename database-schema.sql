@@ -58,12 +58,36 @@ create table if not exists public.academic_records (
 -- Optional admins table to hold admin profiles (auth is handled separately by Supabase Auth)
 create table if not exists public.admins (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid, -- optional link to auth.users
+  user_id uuid unique, -- link to auth.users
   full_name text,
-  email text,
+  email text unique,
   role text default 'admin',
+  status text default 'active',
+  last_active timestamptz,
   created_at timestamptz default now()
 );
+
+-- Sync auth users to public.admins
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.admins (user_id, email, full_name, role, status)
+  values (
+    new.id, 
+    new.email, 
+    coalesce(new.raw_user_meta_data->>'full_name', new.email), 
+    'admin', 
+    'active'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger on auth.users (ensure it exists only once)
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 -- Indexes for common queries
 create index if not exists idx_students_email on public.students (lower(coalesce(email,'')));
@@ -89,12 +113,21 @@ group by s.id, s.full_name;
 alter table public.students enable row level security;
 alter table public.payments enable row level security;
 alter table public.academic_records enable row level security;
+alter table public.admins enable row level security;
 
 -- Performance policies (allow all for dev/testing if needed, or structured)
 -- For now, we follow the user's setup which seems to have RLS enabled but might need policies
 create policy "Allow all for students" on public.students for all using (true) with check (true);
 create policy "Allow all for payments" on public.payments for all using (true) with check (true);
 create policy "Allow all for academic_records" on public.academic_records for all using (true) with check (true);
+
+-- Admins table policies
+create policy "Admins can view all admins" on public.admins for select using (true);
+create policy "Admins can update their own profile" on public.admins for update 
+  using (auth.uid() = user_id) 
+  with check (auth.uid() = user_id);
+create policy "Owners can update any admin" on public.admins for update
+  using (exists (select 1 from public.admins where user_id = auth.uid() and role = 'owner'));
 
 -- Example development policies (UNCOMMENT & ADJUST for production):
 -- Allow authenticated users to select rows (example only)

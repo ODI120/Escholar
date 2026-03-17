@@ -1,15 +1,6 @@
 <template>
   <AdminLayout>
-    <!-- <template #header-actions>
-      <button class="btn btn-primary" @click="refreshData">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polyline points="23,4 23,10 17,10"/>
-          <polyline points="1,20 1,14 7,14"/>
-          <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4l-4.64,4.36A9,9,0,0,1,3.51,15"/>
-        </svg>
-        Refresh
-      </button>
-    </template> -->
+
 
     <div class="page-header">
       <div class="page-header-content">
@@ -61,11 +52,22 @@
       </div>
     </div>
 
+    <div class="best-students">
+      <div class="best-students-header">
+        <h5 class="best-students-title">Best Students</h5>
+      </div>
+      <div class="best-students-body">
+        <div class="best-students-item">
+          <div class="best-students-item-avatar"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Recent Students -->
     <div class="cards">
       <div class="card-header">
         <h5 class="card-title">Recent Activities</h5>
-        <router-link to="/admin/students" class="view-all">View All</router-link>
+        <!-- <router-link to="/admin/students" class="view-all">View All</router-link> -->
       </div>
       <div class="card-body">
         <div v-if="loading" class="text-center py-4">
@@ -79,16 +81,7 @@
 
         <div v-else class="table-responsive">
           <div class="table table-hover">
-            <!-- <thead>
-              <tr>
-                
-                <th>Student</th>
-                <th>School</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead> -->
+            
             
               <router-link :to="`/students/${student.id}`" class="row" v-for="student in recentStudents" :key="student.id">
                 <div class="item">
@@ -115,18 +108,7 @@
                     </div>
                   </div>
                 </div>
-                <!-- <div class="item">{{ student.school }}</div>
-                <div class="item">{{ student.level }}</div> -->
-                <!-- <div class="item">
-                  <span class="badge" :class="getStatusBadgeClass(student.status)">
-                    {{ student.status }}
-                  </span>
-                </div> -->
-                <!-- <div class="item">
-                  <router-link :to="`/students/${student.id}`" class="btn btn-sm btn-outline-primary">
-                    View
-                  </router-link>
-                </div> -->
+                
               </router-link>
             
           </div>
@@ -223,7 +205,6 @@ onMounted(() => {
     align-items: center;
     gap: 1rem;
     transition: all var(--transition-fast);
-    margin-bottom: 1rem;
     box-sizing: border-box;
     box-shadow: var(--shadow-xs);
   }
@@ -232,7 +213,18 @@ onMounted(() => {
     flex-wrap: wrap;
     gap: 1rem;
     box-sizing: border-box;
+    margin-bottom: 1rem;
   }
+  @media screen and (max-width: 425px) {
+    .stats{
+      gap: .5rem;
+      flex-direction: column;
+    }
+    .stat-card{
+      padding: .5rem 1rem;
+    }
+  }
+   
 
   .stat-icon {
     width: 48px;
