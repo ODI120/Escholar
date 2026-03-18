@@ -362,11 +362,20 @@ export const useSupabaseStudents = () => {
       date: payment.date || new Date().toISOString(),
       status: payment.status || 'paid'
     }
+    
+    // Only include evidence_url if it's provided to avoid schema errors if the column doesn't exist
+    if (payment.evidence_url) {
+      record.evidence_url = payment.evidence_url
+    }
+
     if (isMock) {
       const newPayment = { id: `p-${Date.now()}`, ...record, created_at: new Date().toISOString() }
       // Add to mock student's payments array
       const student = mockStudents.find(s => s.id === record.student_id)
-      if (student) student.payments.unshift(newPayment)
+      if (student) {
+        if (!student.payments) student.payments = []
+        student.payments.unshift(newPayment)
+      }
       return { data: newPayment, error: null }
     }
     try {
@@ -440,6 +449,40 @@ export const useSupabaseStudents = () => {
     }
   }
 
+  const deletePayment = async (id) => {
+    if (isMock) {
+      mockStudents.forEach(s => {
+        const idx = s.payments.findIndex(p => p.id === id)
+        if (idx !== -1) s.payments.splice(idx, 1)
+      })
+      return { error: null }
+    }
+    try {
+      const { error } = await supabase.from('payments').delete().eq('id', id)
+      return { error }
+    } catch (err) {
+      return { error: { message: err.message || 'Unable to delete payment.' } }
+    }
+  }
+
+  const deleteAcademicRecord = async (id) => {
+    if (isMock) {
+      mockStudents.forEach(s => {
+        if (s.academic_records) {
+          const idx = s.academic_records.findIndex(a => a.id === id)
+          if (idx !== -1) s.academic_records.splice(idx, 1)
+        }
+      })
+      return { error: null }
+    }
+    try {
+      const { error } = await supabase.from('academic_records').delete().eq('id', id)
+      return { error }
+    } catch (err) {
+      return { error: { message: err.message || 'Unable to delete GPA record.' } }
+    }
+  }
+
   return {
     getStudents,
     getStudent,
@@ -449,7 +492,9 @@ export const useSupabaseStudents = () => {
     createPayment,
     createAcademicRecord,
     uploadAcademicEvidence,
-    getAcademicProgress
+    getAcademicProgress,
+    deletePayment,
+    deleteAcademicRecord
   }
 }
 

@@ -209,6 +209,7 @@
                       <th>Description</th>
                       <th>Amount</th>
                       <th>Status</th>
+                      <th class="text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -219,6 +220,26 @@
                       <td data-label="Status">
                         <span class="status-dot" :class="payment.status"></span>
                         <span class="status-name">{{ payment.status }}</span>
+                      </td>
+                      <td data-label="Actions" class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                          <a 
+                            v-if="payment.evidence_url" 
+                            :href="payment.evidence_url" 
+                            target="_blank" 
+                            class="action-icon-btn primary" 
+                            title="View Receipt"
+                          >
+                            <i class="bi bi-file-earmark-text"></i>
+                          </a>
+                          <button 
+                            @click="confirmDeletePayment(payment.id)" 
+                            class="action-icon-btn danger" 
+                            title="Delete Record"
+                          >
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -261,10 +282,8 @@
               <div v-if="academicProgress && academicProgress.length > 0" class="chart-wrapper">
                 <canvas ref="academicChart" id="academic-performance-chart"></canvas>
               </div>
-              <div v-else class="empty-payments py-5">
-                <i class="bi bi-award"></i>
-                <p>No academic records found. Record a GPA to track performance.</p>
-              </div>
+
+              
             </div>
           </div>
         </div>
@@ -329,6 +348,45 @@
                 </button>
               </div>
             </div>
+          </div>
+
+
+          <!-- Academic Records List -->
+          <div v-if="academicProgress && academicProgress.some(r => r.status === 'Recorded')" class="academic-records-list mt-4 card-body">
+            <div class="records-header mb-3">
+              <h4 class="records-title">Academic Records</h4>
+            </div>
+            <div class="records-stack">
+              <div v-for="record in academicProgress.filter(r => r.status === 'Recorded')" :key="record.record_id" class="record-item">
+                <div class="record-info">
+                  <span class="sem-label">{{ record.expected_semester_label || `${record.semester}-${Math.ceil(record.semester_number/2)}` }}</span>
+                  <!-- <small class="session-text" v-if="record.session">{{ record.session }}</small> -->
+                </div>
+                <div class="record-actions">
+                  <a 
+                    v-if="record.evidence_url" 
+                    :href="record.evidence_url" 
+                    target="_blank" 
+                    class="record-action-btn view" 
+                    title="View Evidence"
+                  >
+                    <i class="bi bi-file-earmark-check"></i>
+                    <span>View</span>
+                  </a>
+                  <button 
+                    @click="confirmDeleteAcademicRecord(record.record_id)" 
+                    class="record-action-btn delete" 
+                    title="Delete Record"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-records py-4 px-3 text-center">
+            <i class="bi bi-award text-muted mb-2 d-block" style="font-size: 1.5rem;"></i>
+            <p class="small text-muted mb-0">No academic records found yet.</p>
           </div>
 
           <!-- Audit Log (Mini) -->
@@ -412,6 +470,14 @@
               <div class="input-with-icon">
                 <i class="bi bi-calendar-event"></i>
                 <input type="date" v-model="paymentForm.date" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-group mb-4">
+              <label>Receipt / Evidence (Optional)</label>
+              <div class="file-upload-wrapper">
+                <input type="file" @change="handlePaymentFileUpload" class="form-control" accept=".pdf,image/*">
+                <div class="form-text mt-1">Upload proof of payment (PDF or Image).</div>
               </div>
             </div>
 
@@ -513,7 +579,7 @@ Chart.register(...registerables)
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence, getAcademicProgress } = useSupabaseStudents()
+const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence, getAcademicProgress, deletePayment, deleteAcademicRecord } = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
@@ -526,6 +592,7 @@ const deleteLoading = ref(false)
 
 const showPaymentModal = ref(false)
 const paymentLoading = ref(false)
+const paymentReceiptFile = ref(null)
 const paymentForm = ref({ amount: '', description: '', date: new Date().toISOString().split('T')[0] })
 
 const showAcademicModal = ref(false)
@@ -803,18 +870,31 @@ const callParent = () => {
 
 const addPayment = () => {
   paymentForm.value = { amount: '', description: '', date: new Date().toISOString().split('T')[0] }
+  paymentReceiptFile.value = null
   showPaymentModal.value = true
+}
+
+const handlePaymentFileUpload = (event) => {
+  paymentReceiptFile.value = event.target.files[0]
 }
 
 const submitPayment = async () => {
   paymentLoading.value = true
   try {
+    let evidence_url = ''
+    if (paymentReceiptFile.value) {
+      const { url, error } = await uploadAcademicEvidence(student.value.id, paymentReceiptFile.value)
+      if (error) throw error
+      evidence_url = url
+    }
+
     const payload = {
       student_id: student.value.id,
       amount: paymentForm.value.amount,
       description: paymentForm.value.description,
       date: paymentForm.value.date,
-      status: 'paid'
+      status: 'paid',
+      evidence_url
     }
     const { data, error } = await createPayment(payload)
     if (error) throw error
@@ -825,9 +905,40 @@ const submitPayment = async () => {
     showPaymentModal.value = false
   } catch (err) {
     console.error('Error saving payment:', err)
-    alert('Failed to save payment. Please try again.')
+    alert('Failed to save payment: ' + (err.message || 'Please try again.'))
   } finally {
     paymentLoading.value = false
+  }
+}
+
+const confirmDeletePayment = async (paymentId) => {
+  if (!confirm('Are you sure you want to delete this payment record? This action cannot be undone.')) return
+  
+  try {
+    const { error } = await deletePayment(paymentId)
+    if (error) throw error
+    
+    // Update local state
+    student.value.payments = student.value.payments.filter(p => p.id !== paymentId)
+  } catch (err) {
+    console.error('Delete payment error:', err)
+    alert('Failed to delete payment: ' + (err.message || 'Unknown error'))
+  }
+}
+
+const confirmDeleteAcademicRecord = async (recordId) => {
+  if (!confirm('Are you sure you want to delete this academic record? This will update the chart and progress.')) return
+  
+  try {
+    const { error } = await deleteAcademicRecord(recordId)
+    if (error) throw error
+    
+    // Refresh academic progress to update chart
+    const { data: progress } = await getAcademicProgress(student.value.id)
+    academicProgress.value = progress || []
+  } catch (err) {
+    console.error('Delete academic record error:', err)
+    alert('Failed to delete academic record: ' + (err.message || 'Unknown error'))
   }
 }
 
@@ -1492,66 +1603,191 @@ onMounted(() => {
   background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
 }
 
+/* Action Buttons */
+.action-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.action-icon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.action-icon-btn.primary { color: var(--color-primary); background: rgba(107, 89, 255, 0.1); }
+.action-icon-btn.primary:hover { background: var(--color-primary); color: white; }
+
+.action-icon-btn.success { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.action-icon-btn.success:hover { background: #10b981; color: white; }
+
+.action-icon-btn.danger { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.action-icon-btn.danger:hover { background: #ef4444; color: white; }
+
 /* ── Responsive Card Layout (≤ 640 px) ──────────────────────────────── */
 @media (max-width: 640px) {
-  /* Hide the header row */
   .modern-table thead {
     display: none;
   }
 
-  /* Each row becomes a self-contained card */
   .modern-table tbody tr {
     display: block;
-    margin: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    padding: 1rem;
+    background: var(--surface);
     border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    background: var(--bg-primary);
-    box-shadow: var(--shadow-xs);
-    overflow: hidden;
-  }
-
-  .modern-table tbody tr:hover {
-    background: color-mix(in srgb, var(--color-primary) 4%, var(--bg-primary));
+    border-radius: 12px;
+    margin-bottom: 1rem;
     box-shadow: var(--shadow-sm);
   }
 
-  /* Each cell becomes a flex row: label on left, value on right */
   .modern-table td {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0.65rem 1rem;
+    align-items: center;
+    padding: 0.75rem 0;
     border-bottom: 1px solid var(--border-primary);
-    font-size: 0.9rem;
     text-align: right;
-    gap: 0.75rem;
-    max-width: 100% !important;    /* override inline max-width */
-    white-space: normal;
   }
 
   .modern-table td:last-child {
     border-bottom: none;
+    padding-bottom: 0.25rem;
   }
 
-  /* Column label pulled from data-label attribute */
   .modern-table td::before {
     content: attr(data-label);
-    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-    text-align: left;
   }
 
-  /* Amount cell — make it stand out */
-  .modern-table td[data-label="Amount"] {
-    font-size: 1rem;
-    font-weight: 800;
-    color: var(--color-primary);
+  .modern-table .text-end {
+    text-align: right !important;
   }
+}
+
+.records-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.gpa-display {
+  display: inline-flex;
+  align-items: center;
+}
+
+.gpa-value {
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  background: var(--bg-primary);
+  font-family: var(--font-mono);
+}
+
+.gpa-value.high { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+.gpa-value.low { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+
+.sem-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.records-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.record-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
+}
+
+.record-item:hover {
+  border-color: var(--color-primary);
+  transform: translateX(4px);
+  background: var(--surface);
+}
+
+.record-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.session-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.record-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.record-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+.record-action-btn.view {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.record-action-btn.view:hover {
+  background: #10b981;
+  color: white;
+}
+
+.record-action-btn.delete {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.record-action-btn.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.empty-records {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  border: 2px dashed var(--border-primary);
 }
 
 .status-dot {
@@ -1782,7 +2018,13 @@ onMounted(() => {
   from { opacity: 0; transform: scale(0.85); }
   to   { opacity: 1; transform: scale(1); }
 }
-
+.academic-records-list{
+  background: var(--surface);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-primary);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
 .delete-modal-icon {
   width: 64px;
   height: 64px;
