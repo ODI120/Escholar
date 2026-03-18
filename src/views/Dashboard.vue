@@ -63,7 +63,7 @@
       </div>
 
       <div v-else class="best-students-grid">
-        <div v-for="student in topStudents" :key="student.id" class="student-card">
+        <router-link :to="`/students/${student.id}`" v-for="student in topStudents" :key="student.id" class="student-card">
 
           <div class="card-header-section">
             <div class="card-avatar">
@@ -93,7 +93,7 @@
             </div>
           </div>
 
-        </div>
+        </router-link>
       </div>
     </div>
 
@@ -649,7 +649,7 @@ a{
 .best-students-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.25rem;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -657,7 +657,7 @@ a{
   position: relative;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 1rem;
   transition: all var(--transition-fast);
   border: 1px solid var(--border-primary);
   display: flex;
@@ -666,11 +666,11 @@ a{
   overflow: hidden;
 }
 
-/* .student-card:hover {
+.student-card:hover {
   border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-2px);
-} */
+  /* box-shadow: var(--shadow-sm);
+  transform: translateY(-2px); */
+}
 
 .card-avatar {
   width: 60px;
