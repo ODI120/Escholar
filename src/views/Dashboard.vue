@@ -56,6 +56,7 @@
     <div class="best-students-section">
       <div class="section-header">
         <h5 class="section-title">Best Performing Students</h5>
+        <p>Top 3 students with the highest GPA</p>
       </div>
       <div v-if="topStudents.length === 0" class="text-center py-5 text-muted">
         <p>No academic records available yet</p>
@@ -63,6 +64,7 @@
 
       <div v-else class="best-students-grid">
         <div v-for="student in topStudents" :key="student.id" class="student-card">
+
           <div class="card-header-section">
             <div class="card-avatar">
               <img
@@ -84,8 +86,6 @@
             </div>
           </div>
 
-          <hr>
-
           <div class="gpa-chart-section">
             <div class="chart-label">GPA Progression</div>
             <div class="chart-container">
@@ -93,10 +93,6 @@
             </div>
           </div>
 
-          <!-- <div class="average-gpa-section">
-            <div class="avg-label">Average GPA</div>
-            <div class="avg-value">{{ student.averageGPA.toFixed(2) }}</div>
-          </div> -->
         </div>
       </div>
     </div>
@@ -186,8 +182,8 @@ const fetchAcademicRecords = async (studentIds) => {
       .from('academic_records')
       .select('*')
       .in('student_id', studentIds)
-      .order('created_at', { ascending: true })
-    
+      .order('semester_number', { ascending: true })
+
     if (error) {
       console.error('Error fetching academic records:', error)
       return {}
@@ -202,14 +198,19 @@ const fetchAcademicRecords = async (studentIds) => {
       recordsByStudent[record.student_id].push(record)
     })
 
-    // Calculate average GPA and prepare data
+    // Compute per-student stats
     const studentData = {}
     Object.keys(recordsByStudent).forEach(studentId => {
       const records = recordsByStudent[studentId]
-      const averageGPA = records.reduce((sum, r) => sum + r.gpa, 0) / records.length
+      // Only count semesters with an actual GPA value
+      const recorded = records.filter(r => r.gpa !== null && r.gpa !== undefined)
+      const averageGPA = recorded.length
+        ? recorded.reduce((sum, r) => sum + r.gpa, 0) / recorded.length
+        : 0
       studentData[studentId] = {
         averageGPA,
-        records: records
+        recordedCount: recorded.length,
+        records
       }
     })
 
@@ -227,24 +228,47 @@ const getGPAColor = (gpa) => {
   return '#6B59FF' // Average - Purple
 }
 
+const MIN_RECORDED_SEMESTERS = 2   // must have at least this many GPA entries to qualify
+
 const getTopStudents = async () => {
   try {
     const academicData = await fetchAcademicRecords(students.value.map(s => s.id))
-    
-    // Add academic data to each student
+
     const studentsWithGPA = students.value
-      .map(student => ({
-        ...student,
-        averageGPA: academicData[student.id]?.averageGPA || 0,
-        academicRecords: academicData[student.id]?.records || []
-      }))
-      .filter(student => student.averageGPA > 0) // Only show students with academic records
-      .sort((a, b) => b.averageGPA - a.averageGPA)
+      .map(student => {
+        const data          = academicData[student.id]
+        const averageGPA    = data?.averageGPA    || 0
+        const recordedCount = data?.recordedCount || 0
+        const records       = data?.records       || []
+
+        // Total expected semesters = course_duration × 2
+        const courseDuration    = student.course_duration || Math.ceil(parseInt(student.level || 100) / 100)
+        const totalExpected     = courseDuration * 2
+
+        // Composite score: high GPA + good completion rate
+        // A student with avg 4.8 but only 1 semester scores lower than
+        // one with avg 4.5 and 6/8 semesters completed.
+        const completionRatio   = totalExpected > 0 ? recordedCount / totalExpected : 0
+        const compositeScore    = averageGPA * completionRatio
+
+        return {
+          ...student,
+          averageGPA,
+          recordedCount,
+          totalExpected,
+          completionRatio: Math.round(completionRatio * 100),  // as %
+          compositeScore,
+          academicRecords: records
+        }
+      })
+      // Must have at least MIN_RECORDED_SEMESTERS entries with a real GPA
+      .filter(s => s.recordedCount >= MIN_RECORDED_SEMESTERS)
+      // Sort by composite score (avg GPA weighted by completion rate)
+      .sort((a, b) => b.compositeScore - a.compositeScore)
       .slice(0, 3)
 
     topStudents.value = studentsWithGPA
-    
-    // Render charts after DOM update
+
     await nextTick()
     renderCharts()
   } catch (err) {
@@ -253,102 +277,102 @@ const getTopStudents = async () => {
 }
 
 const renderCharts = () => {
+  // ── Detect dark mode ──────────────────────────────────────────────────
+  const isDark = document.documentElement.classList.contains('dark-mode') ||
+                 document.body.classList.contains('dark-mode')
+
+  const textColor  = isDark ? '#9CA3AF' : '#4B5563'
+  const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+  const tooltipBg  = isDark ? 'rgba(17,24,39,0.95)' : 'rgba(15,15,30,0.88)'
+  const primaryHex = isDark ? '#8475f8' : '#6B59FF'
+
   topStudents.value.forEach(student => {
     const chartId = `gpaChart-${student.id}`
-    const canvas = document.getElementById(chartId)
-    
+    const canvas  = document.getElementById(chartId)
     if (!canvas) return
-    
-    // Destroy existing chart if it exists
+
+    // Destroy existing chart instance
     if (charts.value[student.id]) {
       charts.value[student.id].destroy()
     }
 
-    // Calculate expected semesters based on level
-    const currentLevel = parseInt(student.level)
-    const expectedSemesters = (currentLevel / 100) * 2
-    
-    // Generate all semester labels expected for this level
+    // ── Build semester slots from course_duration (or derive from level) ──
+    const courseDuration = student.course_duration || Math.ceil(parseInt(student.level || 100) / 100)
+    const totalSemesters = courseDuration * 2
+
+    // ── Labels: 1st-100L, 2nd-100L, 1st-200L … (matches StudentDetail) ──
     const allSemesterLabels = []
-    for (let i = 1; i <= expectedSemesters; i++) {
-      const year = Math.ceil(i / 2)
-      const sem = i % 2 === 0 ? '2nd' : '1st'
-      allSemesterLabels.push(`${sem} - ${year}L`)
+    for (let semNum = 1; semNum <= totalSemesters; semNum++) {
+      const semPos   = semNum % 2 === 0 ? 2 : 1
+      const yearNum  = Math.ceil(semNum / 2)
+      const ordinal  = semPos === 1 ? '1st' : '2nd'
+      allSemesterLabels.push(`${ordinal}-${yearNum * 100}L`)
     }
 
-    // Create a map of existing academic records for quick lookup
+    // ── Match records by semester_number (same as StudentDetail) ─────────
     const academicRecords = student.academicRecords || []
-    const gpaMap = {}
-    academicRecords.forEach(record => {
-      const key = `${record.semester} ${record.session}`
-      gpaMap[key] = record.gpa
+    const gpasData = allSemesterLabels.map((_, idx) => {
+      const semNum  = idx + 1
+      const record  = academicRecords.find(r => r.semester_number === semNum)
+      return record ? (record.gpa ?? null) : null
     })
 
-    // Build data array with all expected semesters
-    const gpasData = allSemesterLabels.map(label => {
-      // Try to find matching record
-      const matchingRecord = academicRecords.find(r => 
-        `${r.semester} ${r.session}`.toLowerCase().includes(label.toLowerCase().split(' ')[0])
-      )
-      return matchingRecord ? matchingRecord.gpa : null
+    // ── Colour palette (identical to StudentDetail) ───────────────────────
+    const backgroundColors = gpasData.map(gpa => {
+      if (gpa === null) return isDark ? 'rgba(156,163,175,0.30)' : 'rgba(156,163,175,0.20)'
+      if (gpa >= 4.5)   return 'rgba(3,138,82,0.22)'
+      if (gpa >= 4.0)   return 'rgba(0,194,255,0.18)'
+      if (gpa >= 3.5)   return 'rgba(255,153,0,0.20)'
+      const r = parseInt(primaryHex.slice(1,3), 16)
+      const g = parseInt(primaryHex.slice(3,5), 16)
+      const b = parseInt(primaryHex.slice(5,7), 16)
+      return `rgba(${r},${g},${b},0.22)`
     })
-    
+
+    const borderColors = gpasData.map(gpa => {
+      if (gpa === null) return isDark ? 'rgba(156,163,175, .5)' : 'rgba(156,163,175, .5)'
+      if (gpa >= 4.5)   return '#038a5250'
+      if (gpa >= 4.0)   return '#00c2ff50'
+      if (gpa >= 3.5)   return '#ff990050'
+      if (gpa <= 3.4)   return '#6B59FF50'
+      return primaryHex
+    })
+
     const ctx = canvas.getContext('2d')
-    
-    // Create color array - filled for existing data, lighter for null
-    const backgroundColors = gpasData.map((gpa, idx) => {
-      if (gpa === null) return 'rgba(200, 200, 200, 0.3)' // Gray for future/missing
-      if (gpa >= 4.5) return '#038a5225' // Green
-      if (gpa >= 4.0) return '#00c2ff25' // Cyan
-      if (gpa >= 3.5) return '#ff990025' // Orange
-      return '#6B59FF25' // Purple
-    })
-    
-    const borderColors = gpasData.map((gpa, idx) => {
-      if (gpa === null) return 'rgba(200, 200, 200, 0.5)'
-      if (gpa >= 4.5) return '#038a52'
-      if (gpa >= 4.0) return '#00c2ff'
-      if (gpa >= 3.5) return '#ff9900'
-      return '#6B59FF'
-    })
-    
+
     charts.value[student.id] = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: allSemesterLabels,
-        datasets: [
-          {
-            label: 'GPA',
-            data: gpasData,
-            backgroundColor: backgroundColors,
-            borderColor: borderColors,
-            borderWidth: .5,
-            borderRadius: 6 ,
-            borderSkipped: false
-          }
-        ]
+        datasets: [{
+          label: 'GPA per Semester',
+          data: gpasData,
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 1,
+          borderRadius: 4,
+          borderSkipped: false,
+          barThickness: 'flex',
+          maxBarThickness: 40
+        }]
       },
       options: {
-        indexAxis: undefined,
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
-          legend: {
-            display: false
-          },
+          legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            titleFont: { size: 14, weight: 'bold' },
-            bodyFont: { size: 13 },
+            backgroundColor: tooltipBg,
+            padding: 10,
+            titleFont: { size: 12, weight: '700' },
+            bodyFont:  { size: 11 },
             cornerRadius: 8,
             displayColors: false,
             callbacks: {
-              label: function(context) {
-                if (context.parsed.y === null) {
-                  return 'Not completed'
-                }
-                return `GPA: ${context.parsed.y.toFixed(2)}`
+              title: (items) => items[0].label,
+              label: (ctx) => {
+                if (ctx.parsed.y === null) return '  Not yet recorded'
+                return `  GPA: ${ctx.parsed.y.toFixed(2)}`
               }
             }
           }
@@ -358,22 +382,24 @@ const renderCharts = () => {
             beginAtZero: true,
             max: 5.0,
             ticks: {
-              font: { size: 11 },
-              color: 'var(--text-secondary)'
+              font: { size: 10 },
+              color: textColor,
+              stepSize: 1
             },
             grid: {
-              color: 'rgba(0, 0, 0, 0.05)',
+              color: gridColor,
               drawBorder: false
             }
           },
           x: {
             ticks: {
-              font: { size: 11 },
-              color: 'var(--text-secondary)'
+              font: { size: 9 },
+              color: textColor,
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: false
             },
-            grid: {
-              display: false
-            }
+            grid: { display: false }
           }
         }
       }
@@ -599,12 +625,18 @@ a{
 .best-students-section {
   margin-bottom: 1rem;
   margin-top: 1rem;
-  padding: 1rem 0  0 0;
-  /* border: 1px solid var(--border-primary); */
+  padding: 1rem 0 0 0;
 }
 
 .section-header {
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.section-header p{
+  font-size: .8rem;
+  color: var(--text-secondary);
 }
 
 .section-title {
@@ -616,28 +648,29 @@ a{
 
 .best-students-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
   margin-bottom: 1rem;
 }
 
-.card-header-section {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 1rem;
-}
-
 .student-card {
+  position: relative;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
-  padding: 1rem;
+  padding: 1.25rem;
   transition: all var(--transition-fast);
   border: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  /* gap: 1rem; */
+  overflow: hidden;
 }
+
+/* .student-card:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+} */
 
 .card-avatar {
   width: 60px;
@@ -677,6 +710,13 @@ a{
   align-items: flex-start;
   gap: 0.25rem;
   flex: 1;
+}
+.student-card .card-header-section{
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: .7rem;
+ 
 }
 
 .student-card .card-header-section .card-info small {
@@ -721,30 +761,26 @@ a{
 }
 
 .chart-container {
+  position: relative;
   width: 100%;
-  /* height: 200px; */
-  /* position: relative;
-  margin-bottom: 1rem; */
+  height: 180px;   /* canvas height driven by this — matches maintainAspectRatio:false */
 }
 
 .chart-container canvas {
-  max-height: 200px;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .average-gpa-section {
   width: 100%;
-  /* padding: 1rem;
-  background: var(--background-subtle);
-  border-radius: var(--radius-md);
-  text-align: center;
-  border: 1px solid var(--border-color);
-  margin-top: 1rem; */
+
 }
-/* .bar {
-  display: flex;
-  width: 100%;
-  align-items: start;
-} */
+.bar {
+  /* display: flex; */
+  width: 100% !important;
+  /* align-items: start; */
+}
 
 .avg-label {
   font-size: 0.75rem;
@@ -819,15 +855,6 @@ a{
     font-size: 1.1rem;
   }
 
-  .card-header-section {
-    /* flex-direction: column; */
-    /* align-items: center;
-    text-align: center; */
-  }
-
-  .student-card .card-header-section .card-info {
-    /* align-items: center; */
-  }
 
   .chart-container {
     height: 140px;

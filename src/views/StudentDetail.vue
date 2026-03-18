@@ -213,10 +213,10 @@
                   </thead>
                   <tbody>
                     <tr v-for="payment in student.payments" :key="payment.id">
-                      <td>{{ formatDate(payment.date) }}</td>
-                      <td class="text-truncate" style="max-width: 200px;">{{ payment.description }}</td>
-                      <td class="fw-bold">₦{{ formatCurrency(payment.amount) }}</td>
-                      <td>
+                      <td data-label="Date">{{ formatDate(payment.date) }}</td>
+                      <td data-label="Description" class="text-truncate" style="max-width: 200px;">{{ payment.description }}</td>
+                      <td data-label="Amount" class="fw-bold">₦{{ formatCurrency(payment.amount) }}</td>
+                      <td data-label="Status">
                         <span class="status-dot" :class="payment.status"></span>
                         <span class="status-name">{{ payment.status }}</span>
                       </td>
@@ -242,49 +242,24 @@
                 <i class="bi bi-plus-lg"></i> Record GPA
               </button>
             </div>
-            <div class="card-body p-0">
-              <div v-if="student.academic_records && student.academic_records.length > 0" class="table-responsive">
-                <table class="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Semester</th>
-                      <th>Level</th>
-                      <th>GPA</th>
-                      <th>Status</th>
-                      <th>Evidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="record in student.academic_records" :key="record.id">
-                      <td>{{ record.semester }}</td>
-                      <td>{{ record.session }}</td>
-                      <td>
-                        <div class="d-flex align-items-center gap-2">
-                          <span class="fw-bold fs-5">{{ record.gpa }}</span>
-                          <span v-if="record.gpa >= 4.0" class="incentive-badge" title="Eligible for GPA Incentive">
-                            <i class="bi bi-star-fill"></i> Incentive
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span v-if="record.gpa >= 4.0" class="badge bg-success-subtle text-success border border-success-subtle">Elite</span>
-                        <span v-else class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Standard</span>
-                      </td>
-                      <td>
-                        <a
-                          v-if="record.evidence_url"
-                          :href="record.evidence_url"
-                          download
-                          class="btn-icon-link"
-                          title="Download Evidence"
-                        >
-                          <i class="bi bi-file-earmark-check"></i>
-                        </a>
-                        <span v-else class="text-muted small">No evidence</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div class="card-body">
+              <!-- Progress Indicator -->
+              <div v-if="academicProgressStats.total > 0" class="academic-progress-container">
+                <div class="progress-header">
+                  <div class="progress-info">
+                    <span class="progress-label">Academic Progress</span>
+                    <span class="progress-count">{{ academicProgressStats.recorded }} of {{ academicProgressStats.total }} semesters</span>
+                  </div>
+                  <div class="progress-percentage">{{ academicProgressStats.percentage }}%</div>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar-fill" :style="{ width: academicProgressStats.percentage + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- GPA Chart -->
+              <div v-if="academicProgress && academicProgress.length > 0" class="chart-wrapper">
+                <canvas ref="academicChart" id="academic-performance-chart"></canvas>
               </div>
               <div v-else class="empty-payments py-5">
                 <i class="bi bi-award"></i>
@@ -470,47 +445,51 @@
           </div>
           
           <form @submit.prevent="submitAcademicRecord" class="card-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Semester <span class="text-danger">*</span></label>
-                  <select v-model="academicForm.semester" class="form-control" required>
-                    <option value="" disabled>Select Semester</option>
-                    <option value="1st Semester">1st Semester</option>
-                    <option value="2nd Semester">2nd Semester</option>
-                  </select>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Level <span class="text-danger">*</span></label>
-                  <input type="text" v-model="academicForm.session" class="form-control" placeholder="e.g. 100L" required>
-                </div>
-              </div>
+            <!-- Semester Selection -->
+            <div class="form-group mb-3">
+              <label>Select Semester <span class="text-danger">*</span></label>
+              <select v-model="academicForm.year" class="form-control" required>
+                <option value="" disabled>Choose a pending semester</option>
+                <option v-for="sem in pendingSemesters" :key="sem.value" :value="sem.value">
+                  {{ sem.label }}
+                </option>
+              </select>
+              <div class="form-text mt-1">Only showing semesters yet to be recorded</div>
             </div>
 
+            <!-- Selected Semester Display -->
+            <div v-if="selectedSemesterLabel" class="alert-info p-3 rounded mb-3" style="background: rgba(0, 194, 255, 0.1); border-left: 3px solid #00c2ff; color: var(--text-primary);">
+              <small style="color: var(--text-muted);">Recording for:</small>
+              <div style="font-weight: 600; margin-top: 0.25rem;">{{ selectedSemesterLabel }}</div>
+            </div>
+
+            <!-- GPA Input -->
             <div class="form-group mt-3">
               <label>GPA (0.00 - 5.00) <span class="text-danger">*</span></label>
               <div class="input-with-icon">
                 <i class="bi bi-calculator"></i>
                 <input type="number" v-model="academicForm.gpa" class="form-control" required min="0" max="5.0" step="0.01" placeholder="e.g. 4.25">
               </div>
-              <div v-if="academicForm.gpa >= 4.0" class="mt-1">
-                <small class="text-success fw-600"><i class="bi bi-stars"></i> This student is eligible for the high performance incentive!</small>
+              <div v-if="parseFloat(academicForm.gpa) >= 4.0" class="mt-1">
+                <small class="text-success fw-600" style="display: flex; align-items: center; gap: 0.4rem;">
+                  <i class="bi bi-star-fill"></i> Eligible for high performance incentive!
+                </small>
               </div>
             </div>
 
+            <!-- Evidence Upload -->
             <div class="form-group mt-3 mb-4">
               <label>Evidence (Result/Transcript) <span class="text-danger">*</span></label>
               <div class="file-upload-wrapper">
-                <input type="file" @change="handleFileUpload" class="form-control" accept=".pdf,image/*">
+                <input type="file" @change="handleFileUpload" class="form-control" accept=".pdf,image/*" required>
                 <div class="form-text mt-1">Upload a clear PDF or image of the result as evidence.</div>
               </div>
             </div>
 
+            <!-- Actions -->
             <div class="modal-actions pt-2 border-top">
               <button type="button" class="btn-light-secondary" @click="showAcademicModal = false" :disabled="academicLoading">Cancel</button>
-              <button type="submit" class="btn-primary" :disabled="academicLoading">
+              <button type="submit" class="btn-primary" :disabled="academicLoading || !academicForm.year">
                 <span v-if="academicLoading" class="spinner-border spinner-border-sm me-2"></span>
                 <i v-else class="bi bi-check2-circle me-1"></i>
                 {{ academicLoading ? 'Saving...' : 'Record GPA' }}
@@ -524,17 +503,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import { useSupabaseStudents } from '../composables/useSupabase.js'
+import { Chart, registerables } from 'chart.js'
+
+Chart.register(...registerables)
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence } = useSupabaseStudents()
+const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence, getAcademicProgress } = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
+const academicProgress = ref([])
+const academicChart = ref(null)
+const chartInstance = ref(null)
 
 const showDeleteModal = ref(false)
 const deleteLoading = ref(false)
@@ -547,10 +532,43 @@ const showAcademicModal = ref(false)
 const academicLoading = ref(false)
 const academicEvidenceFile = ref(null)
 const academicForm = ref({
-  semester: '',
-  session: '',
+  year: '',
+  semesterPosition: '',
   gpa: '',
   student_id: ''
+})
+
+const pendingSemesters = computed(() => {
+  if (!student.value || !academicProgress.value) return []
+  
+  const courseDuration = student.value.course_duration || 4
+  const pending = []
+  
+  for (let year = 1; year <= courseDuration; year++) {
+    for (let semPos = 1; semPos <= 2; semPos++) {
+      const semNumber = ((year - 1) * 2) + semPos
+      const isRecorded = academicProgress.value.some(r => r.semester_number === semNumber && r.status === 'Recorded')
+      
+      if (!isRecorded) {
+        const semLabel = semPos === 1 ? '1st' : '2nd'
+        pending.push({
+          value: `${year}-${semPos}`,
+          label: `${semLabel}-${year}L`,
+          year,
+          semesterPosition: semPos,
+          semesterNumber: semNumber
+        })
+      }
+    }
+  }
+  
+  return pending
+})
+
+const selectedSemesterLabel = computed(() => {
+  if (!academicForm.value.year) return ''
+  const pending = pendingSemesters.value.find(s => s.value === academicForm.value.year)
+  return pending ? pending.label : ''
 })
 
 const loadStudent = async () => {
@@ -559,6 +577,9 @@ const loadStudent = async () => {
     const { data, error } = await getStudent(route.params.id)
     if (!error && data) {
       student.value = data
+      // Fetch academic progress from the new view
+      const { data: progress } = await getAcademicProgress(route.params.id)
+      academicProgress.value = progress || []
     } else {
       console.warn('Student load warning:', error)
     }
@@ -568,6 +589,153 @@ const loadStudent = async () => {
     loading.value = false
   }
 }
+
+const renderAcademicChart = async () => {
+  await nextTick()
+
+  if (!academicChart.value) return
+
+  // Destroy existing chart instance before re-creating
+  if (chartInstance.value) {
+    chartInstance.value.destroy()
+  }
+
+  const ctx = academicChart.value.getContext('2d')
+
+  // ── Detect dark mode from the document root ──────────────────────────────
+  const isDark = document.documentElement.classList.contains('dark-mode') ||
+                 document.body.classList.contains('dark-mode')
+
+  const textColor   = isDark ? '#9CA3AF' : '#4B5563'
+  const gridColor   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+  const tooltipBg   = isDark ? 'rgba(17,24,39,0.95)' : 'rgba(15,15,30,0.88)'
+
+  // ── Build labels using 1st-1L / 2nd-1L convention ────────────────────────
+  // semester_number: 1=1st-1L, 2=2nd-1L, 3=1st-2L, 4=2nd-2L …
+  const ordinals = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th']
+  const labels = academicProgress.value.map(r => {
+    const semNum  = r.semester_number
+    const semPos  = semNum % 2 === 0 ? 2 : 1          // 1 = first, 2 = second
+    const yearNum = Math.ceil(semNum / 2)              // academic level (100L = 1)
+    const levelStr = `${yearNum * 100}L`
+    const ordinal  = semPos === 1 ? '1st' : '2nd'
+    return `${ordinal}-${levelStr}`                    // e.g. "1st-100L"
+  })
+
+  const gpas = academicProgress.value.map(r => r.gpa ?? null)
+
+  // ── Color guide palette (from design system) ──────────────────────────────
+  // High ≥4.5 → Green   (#038a52)
+  // Good ≥4.0 → Cyan    (#00c2ff)
+  // Fair ≥3.5 → Orange  (#ff9900)
+  // Other     → Purple  (#6B59FF  light / #8475f8 dark)
+  const primaryHex = isDark ? '#8475f850' : '#6B59FF50'
+
+  const backgroundColors = gpas.map(gpa => {
+    if (gpa === null) return isDark ? 'rgba(156,163,175,0.30)' : 'rgba(156,163,175,0.20)'
+    if (gpa >= 4.5)  return 'rgba(3,138,82,0.22)'
+    if (gpa >= 4.0)  return 'rgba(0,194,255,0.18)'
+    if (gpa >= 3.5)  return 'rgba(255,153,0,0.20)'
+    const r = parseInt(primaryHex.slice(1,3),16)
+    const g = parseInt(primaryHex.slice(3,5),16)
+    const b = parseInt(primaryHex.slice(5,7),16)
+    return `rgba(${r},${g},${b},0.22)`
+  })
+
+  const borderColors = gpas.map(gpa => {
+    if (gpa === null) return isDark ? 'rgba(156,163,175,0.4)' : 'rgba(156,163,175,0.5)'
+    if (gpa >= 4.5)  return '#038a5226'
+    if (gpa >= 4.0)  return '#00c2ff26'
+    if (gpa >= 3.5)  return '#ff990026'
+    return primaryHex
+  })
+
+  chartInstance.value = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'GPA per Semester',
+        data: gpas,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        borderRadius: 8,
+        borderSkipped: false,
+        barThickness: 'flex',
+        maxBarThickness: 56
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,   // height is driven by the CSS wrapper
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 12, weight: '600', family: 'inherit' },
+            color: textColor,
+            padding: 16,
+            usePointStyle: true,
+            pointStyle: 'rectRounded'
+          }
+        },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          padding: 12,
+          titleFont:  { size: 13, weight: '700' },
+          bodyFont:   { size: 12 },
+          cornerRadius: 10,
+          displayColors: true,
+          callbacks: {
+            title: (items) => items[0].label,
+            label: (ctx) => {
+              if (ctx.parsed.y === null) return '  Not yet recorded'
+              return `  GPA: ${ctx.parsed.y.toFixed(2)}`
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 5.0,
+          title: {
+            display: true,
+            text: 'GPA',
+            color: textColor,
+            font: { size: 11, weight: '600' }
+          },
+          ticks: {
+            font: { size: 10 },
+            color: textColor,
+            stepSize: 0.5
+          },
+          grid: {
+            color: gridColor,
+            drawBorder: false
+          }
+        },
+        x: {
+          ticks: {
+            font: { size: 10 },
+            color: textColor,
+            maxRotation: 45,
+            minRotation: 0,
+            autoSkip: false
+          },
+          grid: { display: false }
+        }
+      }
+    }
+  })
+}
+
+// Watch for changes in academicProgress to render chart 
+watch(academicProgress, () => {
+  renderAcademicChart()
+}, { deep: true })
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-NG').format(amount || 0)
@@ -585,6 +753,17 @@ const formatDate = (dateString) => {
 const totalReceived = computed(() => {
   if (!student.value || !student.value.payments) return 0
   return student.value.payments.reduce((sum, p) => sum + (p.amount || 0), 0)
+})
+
+const academicProgressStats = computed(() => {
+  if (!academicProgress.value || academicProgress.value.length === 0) {
+    return { total: 0, recorded: 0, pending: 0, percentage: 0 }
+  }
+  const total = academicProgress.value.length
+  const recorded = academicProgress.value.filter(r => r.status === 'Recorded').length
+  const pending = total - recorded
+  const percentage = Math.round((recorded / total) * 100)
+  return { total, recorded, pending, percentage }
 })
 
 const editStudent = () => {
@@ -658,9 +837,9 @@ const markAsPaid = () => {
 
 const addAcademicRecord = () => {
   academicForm.value = {
-    semester: '',
-    session: '',
-  gpa: '',
+    year: '',
+    semesterPosition: '',
+    gpa: '',
     student_id: student.value.id
   }
   academicEvidenceFile.value = null
@@ -682,19 +861,34 @@ const submitAcademicRecord = async () => {
       evidence_url = url
     }
 
+    // Parse year and semesterPosition from the combined value (e.g., "1-1" -> year=1, semPos=1)
+    const [yearStr, semPositionStr] = academicForm.value.year.split('-')
+    const year = parseInt(yearStr)
+    const semesterPosition = parseInt(semPositionStr)
+    const semesterNumber = ((year - 1) * 2) + semesterPosition
+    const semesterLabel = semesterPosition === 1 ? '1st' : '2nd'
+    
+    // Generate session format (e.g., 2024/2025)
+    const currentYear = new Date().getFullYear()
+    const admissionYear = student.value.year_of_admission || 2022
+    const sessionYear = currentYear + (year - 1) - (admissionYear - 1)
+    const session = `${sessionYear}/${sessionYear + 1}`
+
     const payload = {
-      ...academicForm.value,
-      // Ensure types match typical DB schemas (numeric gpa, string fields)
+      student_id: student.value.id,
+      semester: semesterLabel,
+      session: session,
       gpa: academicForm.value.gpa === '' ? null : Number.parseFloat(academicForm.value.gpa),
-      evidence_url,
-      student_id: student.value.id
+      semester_number: semesterNumber,
+      evidence_url
     }
 
     const { data, error } = await createAcademicRecord(payload)
     if (error) throw error
     
-    if (!student.value.academic_records) student.value.academic_records = []
-    student.value.academic_records.unshift(data)
+    // Refresh academic progress to update chart
+    const { data: progress } = await getAcademicProgress(student.value.id)
+    academicProgress.value = progress || []
     showAcademicModal.value = false
     
     if ((payload.gpa ?? 0) >= 4.0) {
@@ -1283,10 +1477,81 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-primary);
   font-size: 0.95rem;
   color: var(--text-primary);
+  vertical-align: middle;
 }
 
 .modern-table tr:last-child td {
   border-bottom: none;
+}
+
+.modern-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.modern-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
+}
+
+/* ── Responsive Card Layout (≤ 640 px) ──────────────────────────────── */
+@media (max-width: 640px) {
+  /* Hide the header row */
+  .modern-table thead {
+    display: none;
+  }
+
+  /* Each row becomes a self-contained card */
+  .modern-table tbody tr {
+    display: block;
+    margin: 0.75rem 1rem;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+
+  .modern-table tbody tr:hover {
+    background: color-mix(in srgb, var(--color-primary) 4%, var(--bg-primary));
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Each cell becomes a flex row: label on left, value on right */
+  .modern-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border-primary);
+    font-size: 0.9rem;
+    text-align: right;
+    gap: 0.75rem;
+    max-width: 100% !important;    /* override inline max-width */
+    white-space: normal;
+  }
+
+  .modern-table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Column label pulled from data-label attribute */
+  .modern-table td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: left;
+  }
+
+  /* Amount cell — make it stand out */
+  .modern-table td[data-label="Amount"] {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--color-primary);
+  }
 }
 
 .status-dot {
@@ -1868,6 +2133,79 @@ onMounted(() => {
   color: #059669;
 }
 
+/* Academic Progress Styles */
+.academic-progress-container {
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--color-primary);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.progress-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.progress-count {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.progress-percentage {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  min-width: 50px;
+  text-align: right;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--border-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 80%, #10b981));
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Chart Wrapper — responsive, height driven by CSS */
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 320px;          /* default height on desktop */
+  padding: 0.5rem 0;
+}
+
+.chart-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* =========================================
    Mobile Adjustments
    ========================================= */
@@ -1886,7 +2224,12 @@ onMounted(() => {
   .info-grid {
     grid-template-columns: 1fr;
   }
-  
+
+  /* Slightly shorter chart on tablet */
+  .chart-wrapper {
+    height: 260px;
+  }
+
   .student-name {
     font-size: 1rem;
     font-weight: 600;
@@ -1927,12 +2270,16 @@ onMounted(() => {
 
 @media (max-width: 425px) {
   .quick-stats {
-
-     width: 100% ;
+     width: 100%;
   }
-  
-  .page-header{
+
+  .page-header {
     flex-direction: row;
+  }
+
+  /* Compact chart height on small phones */
+  .chart-wrapper {
+    height: 220px;
   }
 }
 

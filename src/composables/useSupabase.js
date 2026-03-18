@@ -395,6 +395,51 @@ export const useSupabaseStudents = () => {
     }
   }
 
+  const getAcademicProgress = async (studentId) => {
+    if (isMock) {
+      // Return mock academic progress data
+      const student = mockStudents.find(s => s.id === studentId)
+      if (!student) return { data: [], error: null }
+      
+      const courseDuration = student.course_duration || 4
+      const totalSemesters = courseDuration * 2
+      const semesters = []
+      
+      for (let i = 1; i <= totalSemesters; i++) {
+        const yearNum = Math.ceil(i / 2)
+        const semPos = i % 2 === 0 ? 2 : 1
+        const label = `Semester ${semPos} - Year ${yearNum}`
+        
+        const recorded = student.academic_records?.[i - 1]
+        semesters.push({
+          semester_number: i,
+          expected_semester_label: label,
+          gpa: recorded?.gpa || null,
+          session: recorded?.session || null,
+          semester: recorded?.semester || null,
+          evidence_url: recorded?.evidence_url || null,
+          record_id: recorded?.id || null,
+          status: recorded ? 'Recorded' : 'Pending',
+          created_at: recorded?.created_at || null
+        })
+      }
+      
+      return { data: semesters, error: null }
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('student_academic_progress')
+        .select('*')
+        .eq('id', studentId)
+        .order('semester_number', { ascending: true })
+      
+      return { data: data || [], error }
+    } catch (err) {
+      return { data: [], error: { message: err.message || 'Unable to fetch academic progress.' } }
+    }
+  }
+
   return {
     getStudents,
     getStudent,
@@ -403,7 +448,8 @@ export const useSupabaseStudents = () => {
     deleteStudent,
     createPayment,
     createAcademicRecord,
-    uploadAcademicEvidence
+    uploadAcademicEvidence,
+    getAcademicProgress
   }
 }
 
