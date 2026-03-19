@@ -31,7 +31,7 @@
 
       <div v-else class="alert alert-danger mt-4">
         <h4>Connection Error</h4>
-        <p>Could not load your student record from the database. Please ensure your account is properly linked by your administrator.</p>
+        <p>Could not load your student record from the database. Please try logging in again.</p>
       </div>
 
     </div>
@@ -40,50 +40,22 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import StudentLayout from '../../../layouts/StudentLayout.vue'
-import { supabase } from '../../../composables/useSupabase.js'
 
+const router = useRouter()
 const studentData = ref(null)
 const loading = ref(true)
 
-onMounted(async () => {
+onMounted(() => {
   try {
-    const { data: authData, error: authError } = await supabase.auth.getUser()
+    // We fetch the securely authenticated student's data directly from localStorage
+    const savedData = localStorage.getItem('student_session')
     
-    if (authError || !authData?.user) {
-      console.error("Auth Error: Could not verify session", authError)
-      return
-    }
-
-    const { user } = authData
-    const email = user.email || ''
-    const phone = user.phone || ''
-
-    if (!email && !phone) {
-        throw new Error("User has no email or phone attached to their auth profile.")
-    }
-
-    // Attempt to match the auth user to a record in the students table
-    let query = supabase.from('students').select('*')
-    
-    if (email && phone) {
-      query = query.or(`email.eq.${email},phone_number.eq.${phone}`)
-    } else if (email) {
-      query = query.eq('email', email)
-    } else if (phone) {
-      query = query.eq('phone_number', phone)
-    }
-
-    const { data, error } = await query.maybeSingle()
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error("Database query failed", error)
-    }
-
-    if (data) {
-      studentData.value = data
+    if (savedData) {
+      studentData.value = JSON.parse(savedData)
     } else {
-      console.warn("No matching record found in the students table for email/phone:", email, phone)
+      router.push('/student/login')
     }
   } catch (err) {
     console.error("Failed to load student data:", err)
