@@ -571,8 +571,8 @@
 <script setup>
 import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import { useSupabaseStudents } from '../composables/useSupabase.js'
+import AdminLayout from '../../../layouts/AdminLayout.vue'
+import { useSupabaseStudents } from '../../../composables/useSupabase.js'
 import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)

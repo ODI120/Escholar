@@ -154,9 +154,9 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import { useSupabaseStudents } from '../composables/useSupabase.js'
-import { supabase } from '../composables/useSupabase.js'
+import AdminLayout from '../../../layouts/AdminLayout.vue'
+import { useSupabaseStudents } from '../../../composables/useSupabase.js'
+import { supabase } from '../../../composables/useSupabase.js'
 import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)

@@ -166,8 +166,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useSupabaseAdmins, useSupabaseAuth } from '../composables/useSupabase'
-import AdminLayout from '../layouts/AdminLayout.vue'
+import { useSupabaseAdmins, useSupabaseAuth } from '../../../composables/useSupabase'
+import AdminLayout from '../../../layouts/AdminLayout.vue'
 
 const router = useRouter()
 const route = useRoute()

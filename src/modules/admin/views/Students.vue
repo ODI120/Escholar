@@ -1,9 +1,15 @@
-  <template>
+ <template>
   <AdminLayout>
     <div class="page-header">
       <div class="page-header-content">
-        <h1>Graduated Alumni</h1>
-        <p>View all graduated beneficiaries from the scholarship program</p>
+        <h1>Active Beneficiaries</h1>
+        <p>Manage all beneficiaries in the scholarship program</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="add-btn" @click="showAddModal = true">
+          <i class="bi bi-plus-circle"></i>
+          Add Beneficiary
+        </button>
       </div>
     </div>
     
@@ -12,7 +18,7 @@
     <div class="cards">
 
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Graduated Alumni ({{ filteredStudents.length }})</h5>
+        <h5 class="card-title mb-0">Active Beneficiaries ({{ filteredStudents.length }})</h5>
 
       </div>
 
@@ -280,8 +286,8 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AdminLayout from '../layouts/AdminLayout.vue'
-import { useSupabaseStudents, supabase, isMock } from '../composables/useSupabase.js'
+import AdminLayout from '../../../layouts/AdminLayout.vue'
+import { useSupabaseStudents, supabase, isMock } from '../../../composables/useSupabase.js'
 
 const route = useRoute()
 const { getStudents, createStudent, updateStudent, deleteStudent } = useSupabaseStudents()
@@ -297,7 +303,7 @@ const editingStudent = ref(null)
 // Filters
 const showFiltersDropdown = ref(false)
 const searchQuery = ref('')
-const statusFilter = ref('graduated')
+const statusFilter = ref('active')
 const levelFilter = ref('')
 const schoolFilter = ref('')
 const genderFilter = ref('')
@@ -358,7 +364,7 @@ const filteredStudents = computed(() => {
       student.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       (student.year_of_admission ? String(student.year_of_admission) : '').includes(searchQuery.value)
 
-    const matchesStatus = student.status === 'graduated'
+    const matchesStatus = student.status === 'active'
     const matchesLevel = !levelFilter.value || student.level === levelFilter.value
     const matchesGender = !genderFilter.value || student.gender === genderFilter.value
     const matchesSchool = !schoolFilter.value ||

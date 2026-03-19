@@ -6,5 +6,5 @@
 </template>
 
 <script setup>
-import AdminLayout from '../layouts/AdminLayout.vue'
+import AdminLayout from '../../../layouts/AdminLayout.vue'
 </script>
