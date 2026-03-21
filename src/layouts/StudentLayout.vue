@@ -1,16 +1,24 @@
 <template>
   <div class="student-layout">
-    <nav class="student-sidebar">
-      <div class="logo">Escholar Student</div>
-      <ul>
-        <li><router-link to="/student/dashboard">Dashboard</router-link></li>
-        <!-- Add more student links here later -->
-      </ul>
-    </nav>
+    <div class="top-nav-container">
+      <nav class="suspended-topnav">
+        <div class="nav-brand">
+          <div class="logo-circle">
+            <img src="/logo.png" alt="Logo" class="fallback-logo" @error="handleImageError" v-if="!imageError" />
+            <span class="logo-text" v-else>E</span>
+          </div>
+          <span class="portal-name">Escholar</span>
+        </div>
+        <div class="nav-actions">
+          <div class="switch-mode">
+            <ThemeToggle inline />
+          </div>
+          <button class="logout-btn" @click="handleLogout">Logout</button>
+        </div>
+      </nav>
+    </div>
+    
     <main class="student-main">
-      <header class="student-header">
-        <div class="user-info">Student Portal</div>
-      </header>
       <div class="content">
         <slot />
       </div>
@@ -19,67 +27,138 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import ThemeToggle from '../components/ThemeToggle.vue'
+
+const router = useRouter()
+const imageError = ref(false)
+
+const handleImageError = () => {
+  imageError.value = true
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('student_session')
+  localStorage.removeItem('user_role')
+  localStorage.removeItem('supabase.auth.token')
+  router.push('/student/login')
+}
 </script>
 
 <style scoped>
 .student-layout {
-  display: flex;
   min-height: 100vh;
-  background-color: var(--bg-body, #f4f6f9);
+  background-color: var(--bg-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--text-primary);
+  transition: background-color var(--transition-normal, 0.3s ease), color var(--transition-normal, 0.3s ease);
 }
-.student-sidebar {
-  width: 250px;
-  background-color: var(--bg-sidebar, #1e1e2d);
-  color: white;
-  padding: 1.5rem;
+
+.top-nav-container {
+  padding: 1rem;
 }
-.student-sidebar .logo {
-  font-size: 1.25rem;
-  font-weight: bold;
-  margin-bottom: 2.5rem;
-  color: white;
-}
-.student-sidebar ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.student-sidebar li {
-  margin-bottom: 1rem;
-}
-.student-sidebar a {
-  color: #adb5bd;
-  text-decoration: none;
-  font-weight: 500;
-  display: block;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-.student-sidebar a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-.student-sidebar a.router-link-active {
-  background-color: var(--color-primary, #6B59FF);
-  color: white;
-}
-.student-main {
-  flex: 1;
+
+.suspended-topnav {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--surface);
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--border-primary);
+  /* max-width: 1400px; */
+  /* margin: 0 auto; */
 }
-.student-header {
-  height: 70px;
-  background-color: white;
+
+.nav-brand {
   display: flex;
   align-items: center;
-  padding: 0 2rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  font-weight: 600;
+  gap: .5rem;
 }
+
+.logo-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  /* background: linear-gradient(135deg, #0d6efd, #0099ff); */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  overflow: hidden;
+}
+
+.fallback-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.portal-name {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.switch-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius-2xl, 20px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s ease);
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+}
+
+.student-main {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
 .content {
-  padding: 2rem;
-  flex: 1;
+  padding: 0 2rem 2rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .portal-name {
+    display: none;
+  }
+  .welcome-text {
+    display: none;
+  }
+  .top-nav-container {
+    padding: 1rem;
+  }
+  .content {
+    padding: 0 1rem 1rem 1rem;
+  }
 }
 </style>

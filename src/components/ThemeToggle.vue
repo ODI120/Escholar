@@ -2,7 +2,7 @@
   <button
     class="theme-toggle"
     @click="toggleTheme"
-    :class="{ 'theme-toggle--light': isLight }"
+    :class="{ 'theme-toggle--light': isLight, 'theme-toggle--inline': inline }"
     aria-label="Toggle theme"
   >
     <svg
@@ -30,6 +30,13 @@
 <script setup>
 import { useTheme } from "../composables/useTheme"
 
+defineProps({
+  inline: {
+    type: Boolean,
+    default: false
+  }
+})
+
 const { isLight, toggleTheme } = useTheme()
 </script>
 
@@ -53,9 +60,26 @@ const { isLight, toggleTheme } = useTheme()
   overflow: hidden;
 }
 
+.theme-toggle--inline {
+  position: static;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-primary);
+  box-shadow: none;
+}
+
+.theme-toggle--inline:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
 .theme-toggle:hover {
   transform: scale(1.05);
   box-shadow: var(--shadow-lg), 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle--inline:hover {
+  transform: scale(1.05);
 }
 
 .theme-toggle:active {
@@ -70,6 +94,11 @@ const { isLight, toggleTheme } = useTheme()
   position: absolute;
   opacity: 0;
   transform: rotate(0deg) scale(0.8);
+}
+
+.theme-toggle--inline .theme-toggle__icon {
+  width: 20px;
+  height: 20px;
 }
 
 .theme-toggle__icon--visible {
