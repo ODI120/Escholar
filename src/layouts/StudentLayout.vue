@@ -116,7 +116,9 @@ const handleLogout = () => {
 }
 
 .top-nav-container {
-  padding: 1rem;
+  padding: 1rem 0;
+  max-width: 1400px;
+  margin: 0 auto;
   /* position: fixed;
   top: 0;
   left: 0;

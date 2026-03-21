@@ -8,8 +8,8 @@
 
       <div v-else-if="studentData" class="dashboard-content">
         <!-- Hero Section -->
-        <div class="hero-section mb-4">
-          <div class="hero-bg" :style="studentData.profile_picture ? `background-image: url(${studentData.profile_picture})` : ''"></div>
+      <div class="hero-section mb-4">
+        <div class="hero-bg" :style="studentData.profile_picture ? `background-image: url(${studentData.profile_picture})` : ''"></div>
           <div class="hero-content">
             <div class="avatar-wrapper">
               <img :src="studentData.profile_picture || `https://ui-avatars.com/api/?name=${studentData.full_name}&background=random`" alt="Avatar" class="avatar-img" />
@@ -23,8 +23,14 @@
               <h1 class="beneficiary-name">{{ studentData.full_name }}</h1>
               <p class="academic-subtitle">
                 <i class="bi bi-mortarboard-fill"></i>
-                {{ studentData.school }} &bull; {{ studentData.department }} ({{ studentData.level ? studentData.level + 'L' : 'Graduated' }})
+                {{ studentData.school }} &bull; {{ studentData.department }} | {{ studentData.level ? studentData.level + 'L' : 'Graduated' }}
               </p>
+            </div>
+            <div class="edit-profile">
+              <button class="btn btn-primary">
+                <i class="bi bi-pencil-square"></i>
+                Edit Profile
+              </button>
             </div>
           </div>
         </div>
@@ -33,7 +39,7 @@
           <!-- Digital Wallet Card -->
           <div class="metric-card wallet-card">
             <div class="card-head between">
-              <span class="card-label">Total Disbursed</span>
+              <span class="card-label">Total Received</span>
               <div class="icon-box-sm glass">
                 <i class="bi bi-wallet2"></i>
               </div>
@@ -255,7 +261,7 @@ onMounted(async () => {
   overflow: hidden;
   background-color: var(--surface);
   border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.05));
+  /* box-shadow: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.05)); */
   margin-top: 1rem;
 }
 
@@ -287,8 +293,8 @@ onMounted(async () => {
   padding: 0 2rem 2rem;
   display: flex;
   align-items: flex-end;
-  gap: 1.5rem;
-  margin-top: -60px;
+  gap: 1rem;
+  margin-top: -45px;
 }
 
 .avatar-wrapper {
@@ -311,7 +317,7 @@ onMounted(async () => {
 
 .hero-info {
   flex-grow: 1;
-  padding-bottom: 0.5rem;
+  padding-bottom:.5rem 0;
   z-index: 2;
 }
 
@@ -350,19 +356,49 @@ onMounted(async () => {
   align-items: center;
   gap: 0.4rem;
 }
+.edit-profile button{
+  /* background-color: var(--color-primary); */
+  color: var(--color-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s ease);
+}
+.edit-profile button:hover {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.2s ease);
+}
+.edit-profile button i{
+  margin-right: 0.5rem;
+  
+}
+.edit-profile button:hover i{
+  color: #fff;
+}
+
 
 /* Metrics Grid */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .metric-card {
   background-color: var(--surface);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg, 12px);
-  padding: 1.5rem;
+  padding: 1rem;
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.02));
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
@@ -524,14 +560,14 @@ onMounted(async () => {
 .data-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .data-card {
   background-color: var(--surface);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg, 12px);
-  padding: 1.5rem;
+  padding: 1rem;
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.02));
 }
 
@@ -650,15 +686,17 @@ onMounted(async () => {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-top: -80px;
+    margin-top: -50x;
   }
   
   .premium-badge {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
+    background-color: #4834d412;
+    color: #4834d4;
+    border: 1px solid #4834d412;
   }
-  
+  .edit-profile{
+    display: none;
+  }
   .modern-table th, .modern-table td {
     padding: 0.75rem 0.5rem;
     font-size: 0.85rem;
@@ -666,6 +704,10 @@ onMounted(async () => {
   
   .hero-info {
     padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 }
 </style>
