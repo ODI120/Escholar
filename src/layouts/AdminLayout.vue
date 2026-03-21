@@ -78,6 +78,7 @@
         </div>
 
         <div class="header-right">
+          <ThemeToggle inline style="margin-right: 0.5rem;" />
           <button class="icon-button notification-btn" aria-label="Notifications">
              <i class="bi bi-bell"></i>
              <span class="notification-badge"></span>
@@ -127,6 +128,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSupabaseAuth } from '../composables/useSupabase.js'
 import logo from '../assets/logo.png'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const router = useRouter()
 const route = useRoute()
