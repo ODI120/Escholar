@@ -1317,12 +1317,21 @@ onUnmounted(() => {
 .hide-card{
   display: none;
 }
-@media (max-width: 768px) {
-  /* .detail-main-grid {
+@media (max-width: 992px) {
+  .detail-main-grid {
+    grid-template-columns: 1fr;
     display: flex;
     flex-direction: column;
-    flex-direction: column-reverse;
-  } */
+  }
+  .sidebar-col {
+    order: 2;
+  }
+  .content-col {
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
   .hide-card{
     display: block;
   }
@@ -1469,6 +1478,20 @@ onUnmounted(() => {
   .avatar-edit-col {
     order: -1;
     padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .edit-modal-layout {
+    padding: 0;
+  }
+  .avatar-edit-col {
+    padding: 1rem;
+  }
+  .profile-avatar.big {
+    width: 120px;
+    height: 120px;
+    font-size: 2.5rem;
   }
 }
 
@@ -1905,27 +1928,46 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .hero-section {
+    padding: 1.5rem 1rem;
+    min-height: auto;
+  }
+
   .hero-content {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-top: -50px;
+    gap: 1.5rem;
   }
 
-  .premium-badge {
-    background-color: #4834d412;
-    color: #4834d4;
-    border: 1px solid #4834d412;
+  .avatar-wrapper {
+    width: 120px;
+    height: 120px;
   }
-
-  .edit-profile { display: none; }
 
   .hero-info {
-    padding-bottom: 0;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+
+  .beneficiary-name {
+    font-size: 1.75rem;
+  }
+
+  .edit-profile {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .edit-profile .btn {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .info-grid {

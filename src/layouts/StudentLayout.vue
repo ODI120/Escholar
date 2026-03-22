@@ -121,16 +121,14 @@ const handleLogout = () => {
 }
 
 .top-nav-container {
-  padding: 1rem 0;
-  max-width: 1400px;
+  background-color: var(--bg-primary);
   margin: 0 auto;
-  /* position: fixed;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000; */
+  z-index: 1000;
 }
-
 .suspended-topnav {
   display: flex;
   justify-content: space-between;
@@ -138,10 +136,9 @@ const handleLogout = () => {
   background-color: var(--surface);
   padding: 0.75rem 1rem;
   border-radius: var(--radius-lg, 12px);
-  /* box-shadow: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.05)); */
   border: 1px solid var(--border-primary);
-  /* max-width: 1400px; */
-  /* margin: 0 auto; */
+  max-width: 1400px;
+  margin: 1rem auto;
 }
 
 .nav-brand {
@@ -329,6 +326,7 @@ button {
 .student-main {
   /* max-width: 1400px; */
   margin: 0 auto;
+  padding-top: 85px; /* Adjust for fixed topnav height */
 }
 
 .content {
