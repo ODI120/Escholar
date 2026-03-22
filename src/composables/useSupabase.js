@@ -79,6 +79,40 @@ export const useSupabaseAuth = () => {
 
 // Students helpers
 export const useSupabaseStudents = () => {
+  const uploadProfileImage = async (studentId, file) => {
+    if (!file || !studentId) return { url: '', error: null }
+
+    if (isMock) {
+      try {
+        return { url: URL.createObjectURL(file), error: null }
+      } catch (err) {
+        return { url: '', error: { message: err?.message || 'Unable to create preview URL.' } }
+      }
+    }
+
+    try {
+      const bucket = 'profiles' // Ensure this bucket exists in Supabase
+      const extension = file.name.split('.').pop()
+      const path = `${studentId}/avatar-${Date.now()}.${extension}`
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type || undefined
+        })
+
+      if (uploadError) return { url: '', error: uploadError }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return { url: data?.publicUrl || '', error: null }
+    } catch (err) {
+      return { url: '', error: { message: err?.message || 'Profile image upload failed.' } }
+    }
+  }
+
   const uploadAcademicEvidence = async (studentId, file) => {
     if (!file || !studentId) return { url: '', error: null }
 
@@ -483,6 +517,35 @@ export const useSupabaseStudents = () => {
     }
   }
 
+  const subscribeToStudentUpdates = (studentId, callback) => {
+    if (isMock) return { unsubscribe: () => {} }
+
+    const channel = supabase
+      .channel(`student-updates-${studentId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'students', filter: `id=eq.${studentId}` },
+        (payload) => callback('students', payload)
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments', filter: `student_id=eq.${studentId}` },
+        (payload) => callback('payments', payload)
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'academic_records', filter: `student_id=eq.${studentId}` },
+        (payload) => callback('academic_records', payload)
+      )
+      .subscribe()
+
+    return {
+      unsubscribe: () => {
+        supabase.removeChannel(channel)
+      }
+    }
+  }
+
   return {
     getStudents,
     getStudent,
@@ -492,9 +555,11 @@ export const useSupabaseStudents = () => {
     createPayment,
     createAcademicRecord,
     uploadAcademicEvidence,
+    uploadProfileImage,
     getAcademicProgress,
     deletePayment,
-    deleteAcademicRecord
+    deleteAcademicRecord,
+    subscribeToStudentUpdates
   }
 }
 

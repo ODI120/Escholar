@@ -35,7 +35,7 @@
                 <!-- Mobile Tabs -->
                 
                 <!-- Existing Actions -->
-                <li><a class="dropdown-item" href="#" @click.prevent="closeDropdown"><i class="bi bi-person me-2"></i> Edit Profile</a></li>
+                <li><a class="dropdown-item" href="#" @click.prevent="closeDropdown(true)"><i class="bi bi-person me-2"></i> Edit Profile</a></li>
                 <li><a class="dropdown-item" href="#" @click.prevent="handleThemeToggle"><i class="bi bi-moon-stars me-2"></i> Toggle Theme</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
@@ -64,6 +64,8 @@ const router = useRouter()
 const imageError = ref(false)
 const { toggleTheme } = useTheme()
 
+const emit = defineEmits(['edit-profile'])
+
 const isDropdownOpen = ref(false)
 const dropdownRef = ref(null)
 
@@ -71,8 +73,11 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-const closeDropdown = () => {
+const closeDropdown = (triggerEdit = false) => {
   isDropdownOpen.value = false
+  if (triggerEdit === true) {
+    emit('edit-profile')
+  }
 }
 
 const handleThemeToggle = () => {

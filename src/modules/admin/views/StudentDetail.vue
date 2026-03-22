@@ -569,7 +569,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '../../../layouts/AdminLayout.vue'
 import { useSupabaseStudents } from '../../../composables/useSupabase.js'
@@ -579,7 +579,17 @@ Chart.register(...registerables)
 
 const route = useRoute()
 const router = useRouter()
-const { getStudent, deleteStudent, createPayment, createAcademicRecord, uploadAcademicEvidence, getAcademicProgress, deletePayment, deleteAcademicRecord } = useSupabaseStudents()
+const { 
+  getStudent, 
+  deleteStudent, 
+  createPayment, 
+  createAcademicRecord, 
+  uploadAcademicEvidence, 
+  getAcademicProgress, 
+  deletePayment, 
+  deleteAcademicRecord,
+  subscribeToStudentUpdates 
+} = useSupabaseStudents()
 
 const loading = ref(true)
 const student = ref(null)
@@ -598,6 +608,7 @@ const paymentForm = ref({ amount: '', description: '', date: new Date().toISOStr
 const showAcademicModal = ref(false)
 const academicLoading = ref(false)
 const academicEvidenceFile = ref(null)
+let realtimeSubscription = null
 const academicForm = ref({
   year: '',
   semesterPosition: '',
@@ -641,12 +652,22 @@ const selectedSemesterLabel = computed(() => {
 const loadStudent = async () => {
   loading.value = true
   try {
-    const { data, error } = await getStudent(route.params.id)
+    const id = route.params.id
+    const { data, error } = await getStudent(id)
     if (!error && data) {
       student.value = data
-      // Fetch academic progress from the new view
-      const { data: progress } = await getAcademicProgress(route.params.id)
+      const { data: progress } = await getAcademicProgress(id)
       academicProgress.value = progress || []
+
+      // Set up real-time sync for this student
+      if (!realtimeSubscription) {
+        realtimeSubscription = subscribeToStudentUpdates(id, (table, payload) => {
+          console.log(`[Admin] Real-time update from ${table}:`, payload)
+          // Refresh all data to ensure absolute sync
+          getStudent(id).then(({ data }) => { if (data) student.value = data })
+          getAcademicProgress(id).then(({ data }) => { academicProgress.value = data || [] })
+        })
+      }
     } else {
       console.warn('Student load warning:', error)
     }
@@ -656,6 +677,12 @@ const loadStudent = async () => {
     loading.value = false
   }
 }
+
+onUnmounted(() => {
+  if (realtimeSubscription) {
+    realtimeSubscription.unsubscribe()
+  }
+})
 
 const renderAcademicChart = async () => {
   await nextTick()

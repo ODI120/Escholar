@@ -1,5 +1,5 @@
 <template>
-  <StudentLayout>
+  <StudentLayout @edit-profile="openEditProfileModal">
     <div class="dashboard-wrapper">
       <div v-if="loading" class="loading-state py-5 text-center">
         <div class="spinner-border text-primary" role="status"></div>
@@ -27,7 +27,7 @@
               </p>
             </div>
             <div class="edit-profile">
-              <button class="btn btn-primary">
+              <button @click="openEditProfileModal" class="btn btn-primary">
                 <i class="bi bi-pencil-square"></i>
                 Edit Profile
               </button>
@@ -36,8 +36,8 @@
         </div>
 
         <!-- New content for detail cards adapted for student module -->
-        <div class="metrics-grid mb-4">
-          <!-- Digital Wallet Card -->
+        <!-- <div class="metrics-grid mb-4">
+          Digital Wallet Card
           <div class="card-details wallet-card">
             <div class="card-header-title">
               <div class="card-icon">
@@ -59,7 +59,7 @@
             </div>
           </div>
 
-          <!-- Academic Progress Card -->
+          Academic Progress Card
           <div class="metric-card academic-card">
             <div class="card-head between">
               <span class="card-label">Academic Progress</span>
@@ -76,7 +76,7 @@
             </div>
           </div>
 
-          <!-- Quick Info Card -->
+          Quick Info Card
           <div class="metric-card info-card">
             <div class="card-head between">
               <span class="card-label">Student Profile</span>
@@ -99,12 +99,110 @@
                </div>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <!-- Main Detail Grid -->
         <div class="detail-main-grid">
           <!-- Left Column -->
           <div class="content-col">
+
+            <!-- Academic Performance -->
+            <div class="detail-card mb-4">
+              <div class="card-head between">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-mortarboard-fill"></i>
+                  <h3>Academic Performance</h3>
+                </div>
+                <button class="add-btn-sm" @click="openAcademicModal" :disabled="pendingSemesters.length === 0">
+                  <i class="bi bi-plus-lg"></i> Record GPA
+                </button>
+              </div>
+              <div class="card-body">
+                <div v-if="academicProgressStats.total > 0" class="academic-progress-container">
+                  <div class="progress-header">
+                    <div class="progress-info">
+                      <span class="progress-label">Academic Progress</span>
+                      <span class="progress-count">{{ academicProgressStats.recorded }} of {{ academicProgressStats.total }} semesters</span>
+                    </div>
+                    <div class="progress-percentage">{{ academicProgressStats.percentage }}%</div>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" :style="{ width: academicProgressStats.percentage + '%' }"></div>
+                  </div>
+                </div>
+                <div v-if="academicProgress && academicProgress.length > 0" class="chart-wrapper">
+                  <canvas ref="academicChart" id="academic-performance-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Financial Overview -->
+            <div class="detail-card financial-card mb-4 hide-card">
+              <div class="card-head">
+                <i class="bi bi-wallet2"></i>
+                <h3>Financial Overview</h3>
+              </div>
+              <div class="fin-card-body">
+                <div class="financial-stat">
+                  <label>Total Amount Received</label>
+                  <div class="stat-amount primary">₦{{ formatCurrency(totalReceived) }}</div>
+                </div>
+                <div class="financial-sep"></div>
+                <div class="financial-stat">
+                  <label>School Fees</label>
+                  <div class="stat-amount blue">₦{{ formatCurrency(studentData.school_fees) }}</div>
+                </div>
+                <div class="bank-info">
+                  <label class="info-lbl-sm">Payment Details</label>
+                  <div class="bank-item">
+                    <i class="bi bi-bank"></i>
+                    <div class="bank-det">
+                      <span class="bank-name">{{ studentData.bank_name || 'N/A' }}</span>
+                      <span class="bank-acc-name">{{ studentData.account_name || 'No Account Name' }}</span>
+                      <span class="bank-acc">{{ studentData.account_number || 'No Account Number' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Remarks & Documents -->
+            <div class="detail-card mb-4">
+              <div class="card-head">
+                <i class="bi bi-file-earmark-text-fill"></i>
+                <h3>Remarks &amp; Documents</h3>
+              </div>
+              <div class="card-body">
+                <div class="remarks-box mb-4">
+                  <label class="info-lbl-sm">Remarks / Notes</label>
+                  <p class="remarks-text">{{ studentData.remarks || 'No additional remarks registered for this beneficiary.' }}</p>
+                </div>
+                <div class="doc-links">
+                  <label class="info-lbl-sm">Uploaded Documents</label>
+                  <div class="doc-grid">
+                    <a
+                      v-if="studentData.admission_letter_url"
+                      :href="studentData.admission_letter_url"
+                      download
+                      class="doc-item"
+                    >
+                      <div class="doc-icon pdf">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                      </div>
+                      <div class="doc-info">
+                        <span class="doc-name">Admission Letter</span>
+                        <span class="doc-meta">Download Document <i class="bi bi-download"></i></span>
+                      </div>
+                    </a>
+                    <div v-else class="no-docs">
+                      <i class="bi bi-info-circle"></i>
+                      <span>No admission letter uploaded yet.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Personal & Academic Information -->
             <div class="detail-card mb-4">
               <div class="card-head">
@@ -173,43 +271,6 @@
               </div>
             </div>
 
-            <!-- Remarks & Documents -->
-            <div class="detail-card mb-4">
-              <div class="card-head">
-                <i class="bi bi-file-earmark-text-fill"></i>
-                <h3>Remarks &amp; Documents</h3>
-              </div>
-              <div class="card-body">
-                <div class="remarks-box mb-4">
-                  <label class="info-lbl-sm">Remarks / Notes</label>
-                  <p class="remarks-text">{{ studentData.remarks || 'No additional remarks registered for this beneficiary.' }}</p>
-                </div>
-                <div class="doc-links">
-                  <label class="info-lbl-sm">Uploaded Documents</label>
-                  <div class="doc-grid">
-                    <a
-                      v-if="studentData.admission_letter_url"
-                      :href="studentData.admission_letter_url"
-                      download
-                      class="doc-item"
-                    >
-                      <div class="doc-icon pdf">
-                        <i class="bi bi-file-earmark-pdf"></i>
-                      </div>
-                      <div class="doc-info">
-                        <span class="doc-name">Admission Letter</span>
-                        <span class="doc-meta">Download Document <i class="bi bi-download"></i></span>
-                      </div>
-                    </a>
-                    <div v-else class="no-docs">
-                      <i class="bi bi-info-circle"></i>
-                      <span>No admission letter uploaded yet.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <!-- Payment History (read-only) -->
             <div class="detail-card mb-4">
               <div class="card-head between">
@@ -219,7 +280,7 @@
                 </div>
               </div>
               <div class="card-body p-0">
-                <div v-if="studentData.payments && studentData.payments.length > 0" class="table-responsive">
+                <div v-if="studentData && studentData.payments && studentData.payments.length > 0" class="table-responsive">
                   <table class="modern-table">
                     <thead>
                       <tr>
@@ -240,51 +301,26 @@
                           <span class="status-name">{{ payment.status }}</span>
                         </td>
                         <td data-label="Receipt" class="text-end">
-                          <a
-                            v-if="payment.evidence_url"
-                            :href="payment.evidence_url"
-                            target="_blank"
-                            class="action-icon-btn primary"
-                            title="View Receipt"
-                          >
-                            <i class="bi bi-file-earmark-text"></i>
-                          </a>
-                          <span v-else class="text-muted" style="font-size: 0.8rem;">—</span>
+                          <div class="d-flex justify-content-end">
+                            <a 
+                              v-if="payment.evidence_url" 
+                              :href="payment.evidence_url" 
+                              target="_blank" 
+                              class="action-icon-btn primary" 
+                              title="View Receipt"
+                            >
+                              <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                            <span v-else class="text-muted small">No receipt</span>
+                          </div>
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <div v-else class="empty-payments py-5">
-                  <i class="bi bi-cash-stack"></i>
-                  <p>No payment history recorded yet.</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Academic Performance -->
-            <div class="detail-card mb-4">
-              <div class="card-head between">
-                <div class="d-flex align-items-center gap-2">
-                  <i class="bi bi-mortarboard-fill"></i>
-                  <h3>Academic Performance</h3>
-                </div>
-              </div>
-              <div class="card-body">
-                <div v-if="academicProgressStats.total > 0" class="academic-progress-container">
-                  <div class="progress-header">
-                    <div class="progress-info">
-                      <span class="progress-label">Academic Progress</span>
-                      <span class="progress-count">{{ academicProgressStats.recorded }} of {{ academicProgressStats.total }} semesters</span>
-                    </div>
-                    <div class="progress-percentage">{{ academicProgressStats.percentage }}%</div>
-                  </div>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar-fill" :style="{ width: academicProgressStats.percentage + '%' }"></div>
-                  </div>
-                </div>
-                <div v-if="academicProgress && academicProgress.length > 0" class="chart-wrapper">
-                  <canvas ref="academicChart" id="academic-performance-chart"></canvas>
+                <div v-else class="empty-payments py-5 text-center">
+                  <i class="bi bi-cash-stack text-muted mb-2 d-block" style="font-size: 2rem;"></i>
+                  <p class="text-muted mb-0">No payment history recorded yet.</p>
                 </div>
               </div>
             </div>
@@ -293,7 +329,7 @@
           <!-- Right Column: Sidebar -->
           <div class="sidebar-col">
             <!-- Financial Overview -->
-            <div class="detail-card financial-card mb-4">
+            <div class="detail-card financial-card mb-4 show-card">
               <div class="card-head">
                 <i class="bi bi-wallet2"></i>
                 <h3>Financial Overview</h3>
@@ -346,6 +382,13 @@
                         <i class="bi bi-file-earmark-check"></i>
                         <span>View</span>
                       </a>
+                      <button
+                        @click="confirmDeleteAcademicRecord(record.record_id)"
+                        class="record-action-btn delete"
+                        title="Delete Record"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -374,11 +417,184 @@
       </div>
 
     </div>
+
+    <!-- Record GPA Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showAcademicModal" class="modal-overlay" @click.self="showAcademicModal = false">
+        <div class="payment-modal form-card">
+          <div class="modal-card-head between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="icon-box-sm success">
+                <i class="bi bi-award"></i>
+              </div>
+              <h3>Record Semester GPA</h3>
+            </div>
+            <button class="close-btn" @click="showAcademicModal = false" :disabled="academicLoading">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+
+          <form @submit.prevent="submitAcademicRecord" class="modal-card-body">
+            <!-- Semester Selection -->
+            <div class="form-group mb-3">
+              <label>Select Semester <span class="text-danger">*</span></label>
+              <select v-model="academicForm.year" class="form-control" required>
+                <option value="" disabled>Choose a pending semester</option>
+                <option v-for="sem in pendingSemesters" :key="sem.value" :value="sem.value">
+                  {{ sem.label }}
+                </option>
+              </select>
+              <div class="form-text mt-1">Only showing semesters yet to be recorded</div>
+            </div>
+
+            <!-- Selected Semester Display -->
+            <div v-if="selectedSemesterLabel" class="semester-preview mb-3">
+              <small>Recording for:</small>
+              <div class="sem-preview-label">{{ selectedSemesterLabel }}</div>
+            </div>
+
+            <!-- GPA Input -->
+            <div class="form-group mt-3">
+              <label>GPA (0.00 - 5.00) <span class="text-danger">*</span></label>
+              <div class="input-with-icon">
+                <i class="bi bi-calculator"></i>
+                <input type="number" v-model="academicForm.gpa" class="form-control" required min="0" max="5.0" step="0.01" placeholder="e.g. 4.25">
+              </div>
+              <div v-if="parseFloat(academicForm.gpa) >= 4.0" class="mt-1">
+                <small class="text-success" style="display:flex;align-items:center;gap:.4rem;font-weight:600">
+                  <i class="bi bi-star-fill"></i> Eligible for high performance incentive!
+                </small>
+              </div>
+            </div>
+
+            <!-- Evidence Upload -->
+            <div class="form-group mt-3 mb-4">
+              <label>Evidence (Result/Transcript) <span class="text-danger">*</span></label>
+              <div class="file-upload-wrapper">
+                <input type="file" @change="handleFileUpload" class="form-control" accept=".pdf,image/*" required>
+                <div class="form-text mt-1">Upload a clear PDF or image of the result as evidence.</div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions pt-2 border-top">
+              <button type="button" class="btn-light-secondary" @click="showAcademicModal = false" :disabled="academicLoading">Cancel</button>
+              <button type="submit" class="btn-primary" :disabled="academicLoading || !academicForm.year">
+                <span v-if="academicLoading" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check2-circle me-1"></i>
+                {{ academicLoading ? 'Saving...' : 'Record GPA' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+    
+    <!-- Edit Profile Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+        <div class="edit-profile-modal payment-modal form-card">
+          <div class="modal-card-head between">
+            <div class="d-flex align-items-center gap-2">
+              <div class="icon-box-sm info">
+                <i class="bi bi-person-gear"></i>
+              </div>
+              <h3>Edit Profile</h3>
+            </div>
+            <button class="close-btn" @click="showEditModal = false" :disabled="editLoading">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+
+          <form @submit.prevent="handleUpdateProfile" class="modal-card-body">
+            <!-- Profile Column Layout -->
+            <div class="edit-modal-layout">
+              <!-- Left: Avatar Upload -->
+              <div class="avatar-edit-col">
+                <div class="profile-avatar big">
+                  <img v-if="profilePreview || studentData.profile_picture" :src="profilePreview || studentData.profile_picture" alt="Avatar">
+                  <span v-else>{{ studentData.full_name?.charAt(0) }}</span>
+                  <label class="avatar-upload-overlay">
+                    <i class="bi bi-camera-fill"></i>
+                    <input type="file" @change="handleProfileImageUpload" accept="image/*" hidden>
+                  </label>
+                </div>
+                <p class="text-sm text-center text-muted mt-2">Click icon to change picture</p>
+              </div>
+
+              <!-- Right: Form Fields -->
+              <div class="form-fields-col">
+                <div class="modal-section-title">Personal Details</div>
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label>Full Name (Read-only)</label>
+                    <input type="text" :value="studentData.full_name" class="form-control" disabled>
+                  </div>
+                  <div class="col-md-6">
+                    <label>Email Address</label>
+                    <input type="email" v-model="editForm.email" class="form-control" placeholder="Email">
+                  </div>
+                  <div class="col-md-6">
+                    <label>Phone Number</label>
+                    <input type="text" v-model="editForm.phone_number" class="form-control" placeholder="Phone">
+                  </div>
+                  <div class="col-md-6">
+                    <label>Gender</label>
+                    <select v-model="editForm.gender" class="form-control">
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="modal-section-title mt-4">Parent / Guardian Information</div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label>Guardian Name</label>
+                    <input type="text" v-model="editForm.parent_name" class="form-control" placeholder="Guardian Name">
+                  </div>
+                  <div class="col-md-6">
+                    <label>Guardian Phone</label>
+                    <input type="text" v-model="editForm.parent_phone" class="form-control" placeholder="Guardian Phone">
+                  </div>
+                </div>
+
+                <div class="modal-section-title mt-4">Banking Information</div>
+                <div class="row g-3">
+                  <div class="col-md-12">
+                    <label>Bank Name</label>
+                    <input type="text" v-model="editForm.bank_name" class="form-control" placeholder="e.g. Zenith Bank">
+                  </div>
+                  <div class="col-md-6">
+                    <label>Account Name</label>
+                    <input type="text" v-model="editForm.account_name" class="form-control" placeholder="Account Name">
+                  </div>
+                  <div class="col-md-6">
+                    <label>Account Number</label>
+                    <input type="text" v-model="editForm.account_number" class="form-control" placeholder="10 Digits">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-actions pt-2 border-top mt-4">
+              <button type="button" class="btn-light-secondary" @click="showEditModal = false" :disabled="editLoading">Cancel</button>
+              <button type="submit" class="btn-primary" :disabled="editLoading">
+                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-save me-1"></i>
+                {{ editLoading ? 'Saving...' : 'Update Profile' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
   </StudentLayout>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import StudentLayout from '../../../layouts/StudentLayout.vue'
 import { useSupabaseStudents } from '../../../composables/useSupabase.js'
@@ -387,7 +603,16 @@ import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables)
 
 const router = useRouter()
-const { getStudent, getAcademicProgress } = useSupabaseStudents()
+const { 
+  getStudent, 
+  getAcademicProgress, 
+  createAcademicRecord, 
+  uploadAcademicEvidence, 
+  uploadProfileImage,
+  updateStudent,
+  deleteAcademicRecord,
+  subscribeToStudentUpdates 
+} = useSupabaseStudents()
 
 const studentData = ref(null)
 const academicProgress = ref([])
@@ -395,11 +620,33 @@ const loading = ref(true)
 const academicChart = ref(null)
 const chartInstance = ref(null)
 
+// GPA Modal state
+const showAcademicModal = ref(false)
+const academicLoading = ref(false)
+const academicEvidenceFile = ref(null)
+const academicForm = ref({ year: '', gpa: '', student_id: '' })
+
+// Edit Profile Modal state
+const showEditModal = ref(false)
+const editLoading = ref(false)
+const profileImageFile = ref(null)
+const profilePreview = ref('')
+const editForm = ref({
+  email: '',
+  phone_number: '',
+  gender: '',
+  parent_name: '',
+  parent_phone: '',
+  bank_name: '',
+  account_name: '',
+  account_number: ''
+})
+
+let realtimeSubscription = null
+
 const totalReceived = computed(() => {
   if (!studentData.value || !studentData.value.payments) return 0
-  return studentData.value.payments
-    .filter(p => typeof p.status === 'string' && p.status.toLowerCase() === 'paid')
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+  return studentData.value.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
 })
 
 const academicProgressStats = computed(() => {
@@ -419,6 +666,174 @@ const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
+}
+
+// Pending semester selector
+const pendingSemesters = computed(() => {
+  if (!studentData.value || !academicProgress.value) return []
+  const courseDuration = studentData.value.course_duration || 4
+  const pending = []
+  for (let year = 1; year <= courseDuration; year++) {
+    for (let semPos = 1; semPos <= 2; semPos++) {
+      const semNumber = ((year - 1) * 2) + semPos
+      const isRecorded = academicProgress.value.some(r => r.semester_number === semNumber && r.status === 'Recorded')
+      if (!isRecorded) {
+        const semLabel = semPos === 1 ? '1st' : '2nd'
+        pending.push({
+          value: `${year}-${semPos}`,
+          label: `${semLabel}-${year}L`,
+          year, semesterPosition: semPos, semesterNumber: semNumber
+        })
+      }
+    }
+  }
+  return pending
+})
+
+const selectedSemesterLabel = computed(() => {
+  if (!academicForm.value.year) return ''
+  const pending = pendingSemesters.value.find(s => s.value === academicForm.value.year)
+  return pending ? pending.label : ''
+})
+
+const openEditProfileModal = () => {
+  if (!studentData.value) return
+  
+  editForm.value = {
+    email: studentData.value.email || '',
+    phone_number: studentData.value.phone_number || '',
+    gender: studentData.value.gender || 'male',
+    parent_name: studentData.value.parent_name || '',
+    parent_phone: studentData.value.parent_phone || '',
+    bank_name: studentData.value.bank_name || '',
+    account_name: studentData.value.account_name || '',
+    account_number: studentData.value.account_number || ''
+  }
+  
+  profileImageFile.value = null
+  profilePreview.value = ''
+  showEditModal.value = true
+}
+
+const handleProfileImageUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    profileImageFile.value = file
+    profilePreview.value = URL.createObjectURL(file)
+  }
+}
+
+const handleUpdateProfile = async () => {
+  editLoading.value = true
+  try {
+    let profile_picture = studentData.value.profile_picture
+
+    if (profileImageFile.value) {
+      const { url, error: uploadError } = await uploadProfileImage(studentData.value.id, profileImageFile.value)
+      if (uploadError) throw uploadError
+      profile_picture = url
+    }
+
+    const updates = {
+      ...editForm.value,
+      profile_picture,
+      updated_at: new Date().toISOString()
+    }
+
+    const { error: updateError } = await updateStudent(studentData.value.id, updates)
+    if (updateError) throw updateError
+
+    showEditModal.value = false
+    alert('Profile updated successfully!')
+    
+    // Refresh local data
+    const { data } = await getStudent(studentData.value.id)
+    if (data) studentData.value = data
+
+  } catch (err) {
+    console.error('Error updating profile:', err)
+    alert(err.message || 'Failed to update profile. Please try again.')
+  } finally {
+    editLoading.value = false
+  }
+}
+
+const openAcademicModal = () => {
+  academicForm.value = { year: '', gpa: '', student_id: studentData.value?.id || '' }
+  academicEvidenceFile.value = null
+  showAcademicModal.value = true
+}
+
+const handleFileUpload = (event) => {
+  academicEvidenceFile.value = event.target.files[0]
+}
+
+const submitAcademicRecord = async () => {
+  academicLoading.value = true
+  try {
+    let evidence_url = ''
+    if (academicEvidenceFile.value) {
+      const { url, error } = await uploadAcademicEvidence(studentData.value.id, academicEvidenceFile.value)
+      if (error) throw error
+      evidence_url = url
+    }
+
+    const [yearStr, semPositionStr] = academicForm.value.year.split('-')
+    const year = parseInt(yearStr)
+    const semesterPosition = parseInt(semPositionStr)
+    const semesterNumber = ((year - 1) * 2) + semesterPosition
+    const semesterLabel = semesterPosition === 1 ? '1st' : '2nd'
+    const currentYear = new Date().getFullYear()
+    const admissionYear = studentData.value.year_of_admission || currentYear
+    const sessionYear = admissionYear + (year - 1)
+    const session = `${sessionYear}/${sessionYear + 1}`
+
+    const payload = {
+      student_id: studentData.value.id,
+      semester: semesterLabel,
+      session,
+      gpa: academicForm.value.gpa === '' ? null : Number.parseFloat(academicForm.value.gpa),
+      semester_number: semesterNumber,
+      evidence_url,
+      status: 'Recorded'
+    }
+
+    const { error } = await createAcademicRecord(payload)
+    if (error) throw error
+
+    // Refresh academic progress to update chart & records
+    const { data: progress } = await getAcademicProgress(studentData.value.id)
+    academicProgress.value = progress || []
+    showAcademicModal.value = false
+
+    if ((payload.gpa ?? 0) >= 4.0) {
+      alert('Congratulations! You are eligible for the High Performance Incentive.')
+    }
+  } catch (err) {
+    console.error('Error saving GPA record:', err)
+    let msg = 'Failed to save record. Please try again.'
+    if (err?.message && err.message.toLowerCase().includes('row-level security')) {
+      msg = 'Permission Error: New record violates database security policy. Please ensure you have run the RLS SQL fix in your Supabase dashboard.'
+    } else if (err?.message) {
+      msg = `Failed to save record: ${err.message}`
+    }
+    alert(msg)
+  } finally {
+    academicLoading.value = false
+  }
+}
+
+const confirmDeleteAcademicRecord = async (recordId) => {
+  if (!confirm('Are you sure you want to delete this academic record? This cannot be undone.')) return
+  try {
+    const { error } = await deleteAcademicRecord(recordId)
+    if (error) throw error
+    const { data: progress } = await getAcademicProgress(studentData.value.id)
+    academicProgress.value = progress || []
+  } catch (err) {
+    console.error('Delete academic record error:', err)
+    alert('Failed to delete record: ' + (err.message || 'Unknown error'))
+  }
 }
 
 const renderAcademicChart = async () => {
@@ -542,23 +957,32 @@ onMounted(async () => {
     
     if (savedData) {
       const parsed = JSON.parse(savedData)
+      const id = parsed.id
       studentData.value = parsed // Show cached instantly
       
-      // Fetch rich data from Supabase using the student's ID for payments & academics
+      // Fetch rich data from Supabase
       const [studentRes, progressRes] = await Promise.all([
-        getStudent(parsed.id),
-        getAcademicProgress(parsed.id)
+        getStudent(id),
+        getAcademicProgress(id)
       ])
       
       if (studentRes.data) {
         studentData.value = studentRes.data
-        // optionally update cache so next load is rich
+        // Update cache
         localStorage.setItem('student_session', JSON.stringify(studentRes.data))
       }
       
       if (progressRes.data) {
         academicProgress.value = progressRes.data
       }
+
+      // Set up real-time sync for this student
+      realtimeSubscription = subscribeToStudentUpdates(id, (table, payload) => {
+        console.log(`Real-time update from ${table}:`, payload)
+        // Refresh all data
+        getStudent(id).then(({ data }) => { if (data) studentData.value = data })
+        getAcademicProgress(id).then(({ data }) => { academicProgress.value = data || [] })
+      })
     } else {
       router.push('/student/login')
     }
@@ -566,6 +990,12 @@ onMounted(async () => {
     console.error("Failed to load student data:", err)
   } finally {
     loading.value = false
+  }
+})
+
+onUnmounted(() => {
+  if (realtimeSubscription) {
+    realtimeSubscription.unsubscribe()
   }
 })
 </script>
@@ -883,6 +1313,163 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 1rem;
+}
+.hide-card{
+  display: none;
+}
+@media (max-width: 768px) {
+  /* .detail-main-grid {
+    display: flex;
+    flex-direction: column;
+    flex-direction: column-reverse;
+  } */
+  .hide-card{
+    display: block;
+  }
+  .show-card{
+    display: none;
+  }
+}
+/* Modern Edit Profile Modal Styles */
+.edit-profile-modal {
+  max-width: 850px !important;
+  width: 95% !important;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(107, 89, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.edit-profile-modal .modal-card-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 2rem;
+}
+
+.edit-profile-modal .modal-card-head,
+.edit-profile-modal .modal-actions {
+  flex-shrink: 0;
+}
+
+.edit-modal-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2.5rem;
+  padding: 1.5rem 0;
+}
+
+.avatar-edit-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(107, 89, 255, 0.05) 0%, rgba(107, 89, 255, 0) 100%);
+  border-radius: 20px;
+}
+
+.profile-avatar.big {
+  width: 160px;
+  height: 160px;
+  font-size: 3.5rem;
+  position: relative;
+  border: 5px solid white;
+  box-shadow: var(--shadow-xl);
+  border-radius: 30px;
+  overflow: hidden;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar.big img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-overlay {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  opacity: 0;
+}
+
+.profile-avatar.big:hover .avatar-upload-overlay {
+  opacity: 1;
+}
+
+.avatar-upload-overlay i {
+  font-size: 1.5rem;
+  transform: translateY(10px);
+  transition: transform 0.3s;
+}
+
+.profile-avatar.big:hover .avatar-upload-overlay i {
+  transform: translateY(0);
+}
+
+.modal-section-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  letter-spacing: 1.5px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-fields-col .form-control {
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  transition: all 0.2s;
+  background: #f8fafc;
+}
+
+.form-fields-col .form-control:focus {
+  background: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
+.form-fields-col label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .edit-modal-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .avatar-edit-col {
+    order: -1;
+    padding: 1.5rem;
+  }
 }
 
 .content-col, .sidebar-col {
@@ -1382,5 +1969,209 @@ onMounted(async () => {
     color: var(--text-muted);
   }
 }
+
+/* Add / Record GPA Button */
+.add-btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-btn-sm:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: white;
+}
+
+.add-btn-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Delete btn in academic records */
+.record-action-btn.delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+.record-action-btn.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.payment-modal {
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-primary);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-card-head {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-primary);
+  background: color-mix(in srgb, var(--color-primary) 2%, var(--surface));
+  border-radius: 18px 18px 0 0;
+}
+
+.modal-card-head.between { justify-content: space-between; }
+
+.modal-card-head h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-card-body { padding: 1.5rem; }
+
+.icon-box-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.icon-box-sm.success { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.close-btn:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--border-primary);
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-control:focus { outline: none; border-color: var(--color-primary); }
+
+.form-text { font-size: 0.78rem; color: var(--text-muted); }
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon i {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+}
+.input-with-icon .form-control { padding-left: 2.5rem; }
+
+.semester-preview {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.semester-preview small { font-size: 0.75rem; color: var(--text-muted); display: block; }
+.sem-preview-label { font-weight: 700; color: var(--color-primary); font-size: 1rem; margin-top: 0.2rem; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-light-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-light-secondary:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.btn-light-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Mini audit */
+.mini-audit { font-size: 0.8rem; color: var(--text-muted); }
+.mini-audit p { margin: 0.2rem 0; }
+
+/* Modal transition */
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.96); }
 </style>
 
