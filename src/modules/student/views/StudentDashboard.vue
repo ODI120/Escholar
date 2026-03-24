@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <StudentLayout @edit-profile="openEditProfileModal">
     <div class="dashboard-wrapper">
       <div v-if="loading" class="loading-state py-5 text-center">
@@ -108,13 +108,13 @@
 
             <!-- Academic Performance -->
             <div class="detail-card mb-4">
-              <div class="card-head between">
+              <div class="card-head">
                 <div class="d-flex align-items-center gap-2">
                   <i class="bi bi-mortarboard-fill"></i>
                   <h3>Academic Performance</h3>
                 </div>
                 <button class="add-btn-sm" @click="openAcademicModal" :disabled="pendingSemesters.length === 0">
-                  <i class="bi bi-plus-lg"></i> Record GPA
+                  <i class="bi bi-plus-lg"></i> Add GPA
                 </button>
               </div>
               <div class="card-body">
@@ -138,7 +138,7 @@
 
             <!-- Financial Overview -->
             <div class="detail-card financial-card mb-4 hide-card">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-wallet2"></i>
                 <h3>Financial Overview</h3>
               </div>
@@ -168,7 +168,7 @@
 
             <!-- Remarks & Documents -->
             <div class="detail-card mb-4">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-file-earmark-text-fill"></i>
                 <h3>Remarks &amp; Documents</h3>
               </div>
@@ -194,9 +194,23 @@
                         <span class="doc-meta">Download Document <i class="bi bi-download"></i></span>
                       </div>
                     </a>
-                    <div v-else class="no-docs">
-                      <i class="bi bi-info-circle"></i>
-                      <span>No admission letter uploaded yet.</span>
+                    <div v-else class="no-docs-upload">
+                      <div class="no-docs-info">
+                        <i class="bi bi-info-circle"></i>
+                        <span>No admission letter uploaded yet.</span>
+                      </div>
+                      <button @click="triggerAdmissionUpload" class="upload-inline-btn" :disabled="admissionLoading">
+                        <span v-if="admissionLoading" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="bi bi-cloud-arrow-up-fill me-1"></i>
+                        {{ admissionLoading ? 'Uploading...' : 'Upload Now' }}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref="admissionFileInput" 
+                        @change="handleAdmissionLetterUpload" 
+                        hidden 
+                        accept=".pdf,image/*"
+                      >
                     </div>
                   </div>
                 </div>
@@ -205,7 +219,7 @@
 
             <!-- Personal & Academic Information -->
             <div class="detail-card mb-4">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-person-lines-fill"></i>
                 <h3>Personal &amp; Academic Information</h3>
               </div>
@@ -253,7 +267,7 @@
 
             <!-- Parent / Guardian -->
             <div class="detail-card mb-4">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-people-fill"></i>
                 <h3>Parent / Guardian Information</h3>
               </div>
@@ -330,7 +344,7 @@
           <div class="sidebar-col">
             <!-- Financial Overview -->
             <div class="detail-card financial-card mb-4 show-card">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-wallet2"></i>
                 <h3>Financial Overview</h3>
               </div>
@@ -360,7 +374,7 @@
 
             <!-- Academic Records List -->
             <div v-if="academicProgress && academicProgress.some(r => r.status === 'Recorded')" class="detail-card mb-4">
-              <div class="card-head">
+              <div class="card-head between">
                 <i class="bi bi-award"></i>
                 <h3>Academic Records</h3>
               </div>
@@ -609,6 +623,7 @@ const {
   createAcademicRecord, 
   uploadAcademicEvidence, 
   uploadProfileImage,
+  uploadAdmissionLetter,
   updateStudent,
   deleteAcademicRecord,
   subscribeToStudentUpdates 
@@ -641,6 +656,10 @@ const editForm = ref({
   account_name: '',
   account_number: ''
 })
+
+// Admission Letter state
+const admissionLoading = ref(false)
+const admissionFileInput = ref(null)
 
 let realtimeSubscription = null
 
@@ -720,6 +739,41 @@ const handleProfileImageUpload = (event) => {
   if (file) {
     profileImageFile.value = file
     profilePreview.value = URL.createObjectURL(file)
+  }
+}
+
+const triggerAdmissionUpload = () => {
+  if (admissionFileInput.value) {
+    admissionFileInput.value.click()
+  }
+}
+
+const handleAdmissionLetterUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  admissionLoading.value = true
+  try {
+    const { url, error } = await uploadAdmissionLetter(studentData.value.id, file)
+    if (error) throw error
+
+    const { error: updateError } = await updateStudent(studentData.value.id, {
+      admission_letter_url: url,
+      updated_at: new Date().toISOString()
+    })
+    if (updateError) throw updateError
+
+    alert('Admission letter uploaded successfully!')
+    
+    // Refresh local data
+    const { data } = await getStudent(studentData.value.id)
+    if (data) studentData.value = data
+  } catch (err) {
+    console.error('Error uploading admission letter:', err)
+    alert(err.message || 'Failed to upload admission letter. Please try again.')
+  } finally {
+    admissionLoading.value = false
+    if (admissionFileInput.value) admissionFileInput.value.value = ''
   }
 }
 
@@ -1110,7 +1164,7 @@ onUnmounted(() => {
   gap: 0.4rem;
 }
 .edit-profile button{
-  color: var(--color-primary);
+  
   border: 1px solid var(--border-primary);
   border-radius: 8px;
   padding: 0.5rem 1rem;
@@ -1338,6 +1392,13 @@ onUnmounted(() => {
   .show-card{
     display: none;
   }
+  .edit-profile button{
+    display: none;
+  }
+
+  /* .top-nav-container{
+    padding: 0 1rem;
+  } */
 }
 /* Modern Edit Profile Modal Styles */
 .edit-profile-modal {
@@ -1516,8 +1577,8 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--color-primary) 2%, var(--surface));
 }
 
-.detail-card .card-head.between {
-  justify-content: space-between;
+.detail-card .between {
+  justify-content: start;
 }
 
 .detail-card .card-head i {
@@ -1929,7 +1990,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .hero-section {
-    padding: 1.5rem 1rem;
+    /* padding: 1.5rem 1rem; */
     min-height: auto;
   }
 
@@ -1937,21 +1998,31 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    gap: 1.5rem;
+    gap: 1rem;
+    padding: 1rem .5rem;
   }
-
+  .badge-row .premium-badge {
+    background-color: #4834d445;
+    border: 1px solid #4834d468;
+    color: #4834d4;
+  }
+  .badge-row i{
+    color: #4834d4 !important;
+  }
   .avatar-wrapper {
     width: 120px;
     height: 120px;
   }
 
   .hero-info {
+    display: flex;
+    flex-direction: column; 
     align-items: center;
     text-align: center;
   }
 
   .beneficiary-name {
-    font-size: 1.75rem;
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
   }
 
   .edit-profile {
@@ -2031,6 +2102,10 @@ onUnmounted(() => {
 .add-btn-sm:hover:not(:disabled) {
   background: var(--color-primary);
   color: white;
+  i{
+    color: white !important;
+    background-color: #e2e8f025;
+  }
 }
 
 .add-btn-sm:disabled {
@@ -2215,5 +2290,67 @@ onUnmounted(() => {
 /* Modal transition */
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; transform: scale(0.96); }
+
+/* Admission Upload Styles */
+.no-docs-upload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
+  border-radius: 14px;
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 30%, transparent);
+  width: 100%;
+}
+
+.no-docs-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.no-docs-info i {
+  color: var(--color-primary);
+  font-size: 1.25rem;
+}
+
+.upload-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.upload-inline-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 80%, black);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+.upload-inline-btn i {
+  font-size: 1rem;
+}
+
+.upload-inline-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 </style>
 

@@ -151,6 +151,40 @@ export const useSupabaseStudents = () => {
     }
   }
 
+  const uploadAdmissionLetter = async (studentId, file) => {
+    if (!file || !studentId) return { url: '', error: null }
+
+    if (isMock) {
+      try {
+        return { url: URL.createObjectURL(file), error: null }
+      } catch (err) {
+        return { url: '', error: { message: err?.message || 'Unable to create preview URL.' } }
+      }
+    }
+
+    try {
+      const bucket = 'beneficiary-files'
+      const extension = file.name.split('.').pop()
+      const path = `${studentId}/admission-${Date.now()}.${extension}`
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type || undefined
+        })
+
+      if (uploadError) return { url: '', error: uploadError }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return { url: data?.publicUrl || '', error: null }
+    } catch (err) {
+      return { url: '', error: { message: err?.message || 'Admission letter upload failed.' } }
+    }
+  }
+
   // Mock data for development
   const mockStudents = [
     {
@@ -556,6 +590,7 @@ export const useSupabaseStudents = () => {
     createAcademicRecord,
     uploadAcademicEvidence,
     uploadProfileImage,
+    uploadAdmissionLetter,
     getAcademicProgress,
     deletePayment,
     deleteAcademicRecord,

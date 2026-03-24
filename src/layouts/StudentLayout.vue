@@ -342,7 +342,7 @@ button {
     display: none;
   }
   .top-nav-container {
-    padding: 1rem;
+    padding: 0 1rem;
   }
   
   .desktop-only {
