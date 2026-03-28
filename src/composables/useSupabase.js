@@ -3,12 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder-key')
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true
+    }
+  }
+)
 
 // Determine whether to use mock data
 export const isMock = !supabaseUrl || supabaseUrl.includes('placeholder')
 
-// Auth helpers
 export const useSupabaseAuth = () => {
   const signUp = async (email, password, metadata = {}) => {
     if (isMock) return { data: null, error: { message: 'Mock mode: signup not available' } }
@@ -31,10 +39,26 @@ export const useSupabaseAuth = () => {
     if (isMock) return { data: null, error: { message: 'Mock mode: signIn not available' } }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (data?.session?.access_token) {
-        localStorage.setItem('supabase.auth.token', data.session.access_token)
+      if (error) return { data: null, error: { message: error.message || 'Supabase signIn failed' } }
+
+      // Verify session actually exists in supabase-js.
+      // Even if signInWithPassword returns data, auth state can still fail to persist.
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessTokenFromSession = sessionData?.session?.access_token
+
+      if (!accessTokenFromSession) {
+        return {
+          data: null,
+          error: {
+            message:
+              'Login succeeded, but Supabase session/access token is missing. (Check email confirmation / credentials.)'
+          }
+        }
       }
-      return { data, error }
+
+      localStorage.setItem('supabase.auth.token', accessTokenFromSession)
+
+      return { data, error: null }
     } catch (err) {
       return { data: null, error: { message: err.message || 'Supabase signIn failed' } }
     }
@@ -55,12 +79,22 @@ export const useSupabaseAuth = () => {
     }
   }
 
+  const updatePassword = async (newPassword) => {
+    if (isMock) return { error: null }
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Unable to update password.' } }
+    }
+  }
+
   const getCurrentUser = () => {
     if (isMock) return { data: { user: null }, error: null }
     try {
       return supabase.auth.getUser()
     } catch (err) {
-      return { data: { user: null }, error: null }
+      return { data: { user: null }, error: { message: err.message || 'Unable to get current user.' } }
     }
   }
 
@@ -74,12 +108,12 @@ export const useSupabaseAuth = () => {
     })
   }
 
-  return { signUp, signIn, signOut, getCurrentUser }
+  return { signUp, signIn, signOut, getCurrentUser, updatePassword }
 }
 
 // Students helpers
 export const useSupabaseStudents = () => {
-  const uploadProfileImage = async (studentId, file) => {
+  const uploadFile = async (studentId, file, bucket, prefix = '') => {
     if (!file || !studentId) return { url: '', error: null }
 
     if (isMock) {
@@ -91,81 +125,12 @@ export const useSupabaseStudents = () => {
     }
 
     try {
-      const bucket = 'profiles' // Ensure this bucket exists in Supabase
       const extension = file.name.split('.').pop()
-      const path = `${studentId}/avatar-${Date.now()}.${extension}`
-
-      const { error: uploadError } = await supabase
-        .storage
-        .from(bucket)
-        .upload(path, file, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: file.type || undefined
-        })
-
-      if (uploadError) return { url: '', error: uploadError }
-
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-      return { url: data?.publicUrl || '', error: null }
-    } catch (err) {
-      return { url: '', error: { message: err?.message || 'Profile image upload failed.' } }
-    }
-  }
-
-  const uploadAcademicEvidence = async (studentId, file) => {
-    if (!file || !studentId) return { url: '', error: null }
-
-    // Mock mode: return a local preview URL only (not persisted)
-    if (isMock) {
-      try {
-        return { url: URL.createObjectURL(file), error: null }
-      } catch (err) {
-        return { url: '', error: { message: err?.message || 'Unable to create preview URL.' } }
-      }
-    }
-
-    try {
-      // IMPORTANT: this must match your Supabase Storage bucket name exactly
-      const bucket = 'academic-evidence'
-      const safeName = String(file.name || 'evidence')
+      const safeName = String(file.name || 'file')
         .replace(/[^\w.\-]+/g, '_')
         .replace(/_+/g, '_')
-      const path = `${studentId}/${Date.now()}-${safeName}`
-
-      const { error: uploadError } = await supabase
-        .storage
-        .from(bucket)
-        .upload(path, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type || undefined
-        })
-
-      if (uploadError) return { url: '', error: uploadError }
-
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-      return { url: data?.publicUrl || '', error: null }
-    } catch (err) {
-      return { url: '', error: { message: err?.message || 'Evidence upload failed.' } }
-    }
-  }
-
-  const uploadAdmissionLetter = async (studentId, file) => {
-    if (!file || !studentId) return { url: '', error: null }
-
-    if (isMock) {
-      try {
-        return { url: URL.createObjectURL(file), error: null }
-      } catch (err) {
-        return { url: '', error: { message: err?.message || 'Unable to create preview URL.' } }
-      }
-    }
-
-    try {
-      const bucket = 'beneficiary-files'
-      const extension = file.name.split('.').pop()
-      const path = `${studentId}/admission-${Date.now()}.${extension}`
+      
+      const path = `${studentId}/${prefix}${Date.now()}-${safeName}`
 
       const { error: uploadError } = await supabase
         .storage
@@ -181,9 +146,13 @@ export const useSupabaseStudents = () => {
       const { data } = supabase.storage.from(bucket).getPublicUrl(path)
       return { url: data?.publicUrl || '', error: null }
     } catch (err) {
-      return { url: '', error: { message: err?.message || 'Admission letter upload failed.' } }
+      return { url: '', error: { message: err?.message || `Upload to ${bucket} failed.` } }
     }
   }
+
+  const uploadProfileImage = (studentId, file) => uploadFile(studentId, file, 'profiles', 'avatar-')
+  const uploadAcademicEvidence = (studentId, file) => uploadFile(studentId, file, 'academic-evidence')
+  const uploadAdmissionLetter = (studentId, file) => uploadFile(studentId, file, 'beneficiary-files', 'admission-')
 
   // Mock data for development
   const mockStudents = [
@@ -385,10 +354,70 @@ export const useSupabaseStudents = () => {
       return { data: [record], error: null }
     }
     try {
-      const { data, error } = await supabase.from('students').insert([student]).select()
-      return { data, error }
+      // 1. Format Phone Number for Supabase (E.164)
+      let formattedPhone = student.phone_number?.trim() || ''
+      if (formattedPhone) {
+        if (!formattedPhone.startsWith('+')) {
+          if (formattedPhone.startsWith('0') && formattedPhone.length === 11) {
+             formattedPhone = '+234' + formattedPhone.substring(1)
+          } else {
+             formattedPhone = '+' + formattedPhone
+          }
+        }
+      }
+
+      // 2. Call the Edge Function — supabase client handles auth automatically
+      const payload = {
+        ...student,
+        phone_number: formattedPhone,
+        password: '000000',
+        user_metadata: { role: 'student' }
+      }
+
+      console.log('Calling create-student Edge Function via raw fetch...')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('User not authenticated. Please log in as an administrator.')
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-student`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session.access_token}`,
+          'X-Service-Auth': session.access_token
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}))
+        throw new Error(errorBody.error || errorBody.message || `HTTP ${response.status}: Failed to create student.`)
+      }
+
+      const data = await response.json()
+
+      if (error) {
+        let message = error.message || 'Failed to create student.'
+        try {
+          if (error.context) {
+            const body = await error.context.json()
+            message = body.error || body.message || message
+          }
+        } catch (e) { /* ignore parse error */ }
+        throw new Error(message)
+      }
+
+      if (data?.error) {
+        throw new Error(data.error)
+      }
+
+      return data?.user
     } catch (err) {
-      return { data: null, error: { message: err.message || 'Unable to create student.' } }
+      console.error('createStudent error:', err)
+      throw err
     }
   }
 
@@ -401,9 +430,11 @@ export const useSupabaseStudents = () => {
     }
     try {
       const { data, error } = await supabase.from('students').update(updates).eq('id', id).select()
-      return { data, error }
+      if (error) throw error
+      return data
     } catch (err) {
-      return { data: null, error: { message: err.message || 'Unable to update student.' } }
+      console.error('updateStudent error:', err)
+      throw err
     }
   }
 
@@ -606,7 +637,7 @@ export const useSupabaseAdmins = () => {
       name: 'Super Admin',
       full_name: 'Super Admin',
       email: 'superadmin@escholar.com',
-      role: 'owner',
+      role: 'super_admin',
       status: 'active',
       last_active: null,
       created_at: 'Today'
@@ -644,27 +675,57 @@ export const useSupabaseAdmins = () => {
   }
 
   const createAdmin = async (admin) => {
-    const base = {
-      email: admin.email,
-      role: admin.role || 'admin',
-      status: admin.status || 'active'
-    }
-
     if (isMock) {
+      const base = {
+        email: admin.email,
+        full_name: admin.full_name || admin.first_name || '',
+        role: admin.role || 'admin'
+      }
       const record = { id: String(Date.now()), ...base, last_active: '—' }
       mockAdmins.unshift(record)
       return { data: record, error: null }
     }
 
     try {
-      const { data, error } = await supabase
-        .from('admins')
-        .insert([base])
-        .select()
-        .single()
+      console.log('Calling create-admin Edge Function via raw fetch...')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('User not authenticated. Please log in as an administrator.')
+      }
 
-      return { data, error }
+      const payload = {
+        email: admin.email,
+        password: admin.password,
+        full_name: admin.full_name || admin.first_name || '',
+        user_metadata: { role: admin.role || 'admin' }
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session.access_token}`,
+          'X-Service-Auth': session.access_token
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}))
+        throw new Error(errorBody.error || errorBody.message || `HTTP ${response.status}: Failed to create admin.`)
+      }
+
+      const responseData = await response.json()
+
+      if (responseData?.error) {
+        throw new Error(responseData.error)
+      }
+
+      return { data: responseData.adminRecord || { email: admin.email, role: admin.role }, error: null }
     } catch (err) {
+      console.error('createAdmin error:', err)
       return {
         data: null,
         error: { message: err.message || 'Unable to create admin.' }
@@ -709,7 +770,7 @@ export const useSupabaseAdmins = () => {
         id: String(Date.now()),
         name: user.user_metadata?.full_name || user.email.split('@')[0],
         email: user.email,
-        role: 'owner',
+        role: 'super_admin',
         status: 'active',
         last_active: 'Today'
       }
@@ -731,9 +792,10 @@ export const useSupabaseAdmins = () => {
       if (existing) return { data: existing, error: null }
 
       const payload = {
+        user_id: user.id,
         email: user.email,
-        role: 'owner',
-        status: 'active'
+        full_name: user.user_metadata?.full_name || user.email.split('@')[0],
+        role: 'super_admin'
       }
 
       const { data: created, error: createError } = await supabase

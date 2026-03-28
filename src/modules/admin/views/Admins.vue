@@ -5,46 +5,17 @@
         <h2 class="page-title">Admins</h2>
         <p class="page-subtitle">Manage access to the Escholar admin portal.</p>
       </div>
-      <router-link to="/admin-profile" class="btn-primary as-link">
-        My Profile
-      </router-link>
+      <div class="header-actions">
+        <button v-if="currentUserRole === 'super_admin'" class="btn-primary" @click="showCreateModal = true">
+          Create Admin
+        </button>
+        <router-link to="/admin-profile" class="btn-secondary as-link" style="text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 999px; line-height: 1.5; align-items: inherit; display: inline-flex;">
+          My Profile
+        </router-link>
+      </div>
     </div>
 
-    <div class="card mb-4 invite-card">
-      <h3 class="card-title">Create admin</h3>
-      <form class="invite-form" @submit.prevent="createAdminFromForm">
-        <div class="field">
-          <label>Email</label>
-          <input
-            v-model="adminForm.email"
-            type="email"
-            required
-            placeholder="admin@example.com"
-          />
-        </div>
-        <div class="field">
-          <label>Role</label>
-          <select v-model="adminForm.role">
-            <option value="owner">Owner</option>
-            <option value="admin">Admin</option>
-            <option value="viewer">Viewer</option>
-          </select>
-        </div>
-        <div class="actions">
-          <span v-if="adminFormMessage" class="invite-message">{{ adminFormMessage }}</span>
-          <div class="actions-right">
-            <button type="button" class="btn-secondary" @click="resetAdminForm" :disabled="adminFormLoading">
-              Clear
-            </button>
-            <button type="submit" class="btn-primary" :disabled="adminFormLoading">
-              {{ adminFormLoading ? 'Saving…' : 'Create Admin' }}
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <div class="card">
+        <div class="card">
       <div class="card-header">
         <h3 class="card-title">Admin users</h3>
         <span class="badge">{{ admins.length }} total</span>
@@ -91,6 +62,62 @@
         <p>No admins yet. Use the form above to create your first admin.</p>
       </div>
     </div>
+    <!-- Create Admin Modal -->
+    <div v-if="showCreateModal" class="modal-backdrop" @click="closeCreateModal">
+      <div class="modal-panel" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-block">
+            <div class="modal-avatar">
+              <i class="bi bi-person-plus"></i>
+            </div>
+            <div>
+              <h3 class="modal-title">Create New Admin</h3>
+              <p class="modal-subtitle">Add a new associated administrator</p>
+            </div>
+          </div>
+          <button class="modal-close" @click="closeCreateModal">&times;</button>
+        </div>
+        <div class="modal-body" style="gap: 1rem;">
+          <form class="create-admin-form" id="createAdminForm" @submit.prevent="createAdminFromForm">
+            <div class="field">
+              <label>First Name</label>
+              <input v-model="adminForm.firstName" type="text" required placeholder="Jane" />
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input v-model="adminForm.email" type="email" required placeholder="admin@example.com" />
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input v-model="adminForm.password" type="password" required placeholder="Strong password" minlength="6" />
+            </div>
+            <div class="field">
+              <label>Confirm Password</label>
+              <input v-model="adminForm.confirmPassword" type="password" required placeholder="Confirm password" minlength="6" />
+            </div>
+            <div class="field">
+              <label>Role</label>
+              <select v-model="adminForm.role">
+                <option value="super_admin">Super Admin</option>
+                <option value="admin">Admin</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+          </form>
+          <div v-if="adminFormMessage" class="invite-message" :class="{'success': adminFormMessage.includes('successfully')}">
+            {{ adminFormMessage }}
+          </div>
+        </div>
+        <div class="modal-footer" style="gap: 0.75rem;">
+          <button type="button" class="btn-secondary" @click="closeCreateModal" :disabled="adminFormLoading">
+            Cancel
+          </button>
+          <button type="submit" form="createAdminForm" class="btn-primary" :disabled="adminFormLoading || !adminForm.firstName || adminForm.password !== adminForm.confirmPassword">
+            {{ adminFormLoading ? 'Creating...' : 'Create Account' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </AdminLayout>
 </template>
 
@@ -106,8 +133,14 @@ const admins = ref([])
 const adminsLoading = ref(false)
 const adminsError = ref('')
 
+const showCreateModal = ref(false)
+const currentUserRole = ref('')
+
 const adminForm = ref({
+  firstName: '',
   email: '',
+  password: '',
+  confirmPassword: '',
   role: 'admin'
 })
 
@@ -137,16 +170,29 @@ const loadAdmins = async () => {
   }
 }
 
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  resetAdminForm()
+}
+
 const resetAdminForm = () => {
   adminForm.value = {
+    firstName: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     role: 'admin'
   }
   adminFormMessage.value = ''
 }
 
 const createAdminFromForm = async () => {
-  if (!adminForm.value.email) return
+  if (!adminForm.value.email || !adminForm.value.firstName || !adminForm.value.password) return
+
+  if (adminForm.value.password !== adminForm.value.confirmPassword) {
+    adminFormMessage.value = 'Passwords do not match.'
+    return
+  }
 
   adminFormLoading.value = true
   adminFormMessage.value = ''
@@ -161,7 +207,9 @@ const createAdminFromForm = async () => {
         lastActive: data.last_active || data.lastActive || '—'
       })
       adminFormMessage.value = 'Admin created successfully.'
-      resetAdminForm()
+      setTimeout(() => {
+        closeCreateModal()
+      }, 1000)
     }
   } catch (err) {
     adminFormMessage.value = err.message || 'Failed to create admin.'
@@ -178,7 +226,10 @@ const ensureCurrentUserAdmin = async () => {
   try {
     const { data, error } = await getCurrentUser()
     if (!data?.user || error) return
-    await ensureAdminForUser(data.user)
+    const res = await ensureAdminForUser(data.user)
+    if (res?.data) {
+      currentUserRole.value = res.data.role
+    }
   } catch (_) {
     // ignore
   }
@@ -195,6 +246,22 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.create-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.invite-message.success {
+  color: #16a34a;
 }
 
 .page-title {
@@ -312,7 +379,7 @@ onMounted(() => {
   text-transform: capitalize;
 }
 
-.role-pill.owner {
+.role-pill.super_admin {
   background: #eef2ff;
   color: #4f46e5;
 }

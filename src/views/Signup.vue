@@ -158,11 +158,16 @@ const handleLogout = async () => {
 const testConnection = async () => {
   try {
     // Test basic connection to Supabase
-    const response = await fetch('https://rhpwrkfwcocqkvjdscyd.supabase.co/rest/v1/', {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    // Test connection by hitting the admins table (with 0 results)
+    // This avoids hitting the root /rest/v1/ endpoint which Supabase is phasing out for anon key access.
+    const response = await fetch(`${supabaseUrl}/rest/v1/admins?select=count`, {
       method: 'GET',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocHdya2Z3Y29jcWt2amRzY3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNTQzMjgsImV4cCI6MjA4ODczMDMyOH0.rVVpg3gYMdxym9MfpzUhHiyQWY73mhWpsLm683WR73I',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocHdya2Z3Y29jcWt2amRzY3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNTQzMjgsImV4cCI6MjA4ODczMDMyOH0.rVVpg3gYMdxym9MfpzUhHiyQWY73mhWpsLm683WR73I'
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
       }
     })
 

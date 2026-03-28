@@ -616,15 +616,10 @@ const handleSubmit = async () => {
       }
     })
 
-    let result
     if (isEditing.value) {
-      result = await updateStudent(editingStudent.value.id, sanitizedData)
+      await updateStudent(editingStudent.value.id, sanitizedData)
     } else {
-      result = await createStudent(sanitizedData)
-    }
-
-    if (result.error) {
-      throw result.error
+      await createStudent(sanitizedData)
     }
 
     await loadStudents()

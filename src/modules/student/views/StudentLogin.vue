@@ -1,71 +1,71 @@
 <template>
-  <div class="auth-page">
-    <div class="auth-card">
-      <h2 class="auth-title">Escholar</h2>
-      <p class="auth-subtitle">Student Portal</p>
+  <div class="auth-page-premium">
+    <!-- Cinematic Background -->
+    <div class="background-overlay"></div>
+    
+    <!-- Glassmorphic Login Panel -->
+    <div class="auth-card glass-panel">
+      <!-- Branding / Entry Graphic -->
+      <div class="brand-header">
+        <div class="brand-logo-container staggered-1">
+          <div class="brand-logo glow">
+            <i class="bi bi-mortarboard-fill"></i>
+          </div>
+        </div>
+        <h2 class="auth-title staggered-2">Escholar Portal</h2>
+        <p class="auth-subtitle staggered-2">Beneficiary Access Terminal</p>
+      </div>
 
-      <!-- Step 1: Verify Identifier -->
-      <form v-if="step === 1" @submit.prevent="verifyIdentifier">
-        <div class="form-group">
-          <label class="form-label" for="identifier">Email or Phone Number</label>
+      <form @submit.prevent="handleLogin" class="elegant-form">
+        <!-- Floating Label Inputs -->
+        <div class="floating-group staggered-3">
           <input
-            type="text"
-            id="identifier"
-            v-model="form.identifier"
+            type="email"
+            id="email"
+            v-model="form.email"
             required
-            placeholder="e.g. student@school.edu or 0801234..."
-            class="input"
+            placeholder=" "
+            class="floating-input"
+            autocomplete="email"
           />
+          <label class="floating-label" for="email">
+            <i class="bi bi-envelope-fill icon-left"></i> Email Address
+          </label>
         </div>
 
-        <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Verifying...' : 'Next' }}
-        </button>
-      </form>
-
-      <!-- Step 2: Login -->
-      <form v-else @submit.prevent="handleLogin">
-        <div class="form-group">
-          <div class="d-flex justify-content-between align-items-center mb-1">
-             <label class="form-label mb-0" for="identifier_disabled">Email or Phone Number</label>
-             <button type="button" class="btn-link text-primary" @click="step = 1; error = ''">Change</button>
-          </div>
-          <input
-            type="text"
-            id="identifier_disabled"
-            :value="form.identifier"
-            disabled
-            class="input text-muted bg-light"
-          />
-        </div>
-
-        <div v-if="verifiedStudentName" class="welcome-text mb-3">
-          Hi, <strong>{{ verifiedStudentName }}</strong>! Please enter your password to continue.
-        </div>
-
-        <div class="form-group">
-          <div class="d-flex justify-content-between align-items-center mb-1">
-             <label class="form-label mb-0" for="password">Password</label>
-             <small class="text-primary" style="font-size: 0.8rem;">(Default: 000000)</small>
-          </div>
+        <div class="floating-group staggered-4">
           <input
             type="password"
             id="password"
             v-model="form.password"
             required
-            placeholder="Enter your password"
-            class="input"
-            autofocus
+            placeholder=" "
+            class="floating-input"
+            autocomplete="current-password"
           />
+          <label class="floating-label" for="password">
+            <i class="bi bi-key-fill icon-left"></i> Password
+          </label>
+          <div class="password-hint">
+            <small>(Default password is 000000)</small>
+          </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" :disabled="loading">
-          {{ loading ? 'Signing in...' : 'Sign In' }}
+        <button type="submit" class="btn-premium btn-pulse staggered-5" :class="{ 'is-loading': loading }" :disabled="loading">
+          <span v-if="!loading" class="btn-text">Log In <i class="bi bi-arrow-right icon-right"></i></span>
+          <div class="spinner-grow spinner-grow-sm text-light" role="status" v-if="loading">
+            <span class="visually-hidden">Loading...</span>
+          </div>
         </button>
       </form>
 
-      <div v-if="error" class="alert alert-danger mt-3 rounded-3">
-        <strong>Auth Error:</strong> {{ error }}
+      <!-- Errors -->
+      <div v-if="error" class="error-glass mt-3 staggered-6">
+        <div class="error-icon"><i class="bi bi-exclamation-octagon"></i></div>
+        <div class="error-content">
+          <strong>Authentication Error</strong>
+          <p>{{ error }}</p>
+        </div>
       </div>
     </div>
   </div>
@@ -77,86 +77,45 @@
   import { supabase } from '../../../composables/useSupabase.js'
 
   const router = useRouter()
-  const step = ref(1)
-
   const form = ref({
-    identifier: '',
+    email: '',
     password: ''
   })
 
   const loading = ref(false)
   const error = ref('')
-  const verifiedStudentName = ref('')
-
-  const formatIdentifier = (identifier) => {
-    let formatted = identifier.trim()
-    if (!formatted.includes('@')) {
-      if (formatted.startsWith('0') && formatted.length === 11) {
-        formatted = '+234' + formatted.substring(1)
-      } else if (formatted.length > 0 && !formatted.startsWith('+')) {
-        formatted = '+' + formatted
-      }
-    }
-    return formatted
-  }
-
-  const verifyIdentifier = async () => {
-    loading.value = true
-    error.value = ''
-    verifiedStudentName.value = ''
-
-    try {
-      const searchId = formatIdentifier(form.value.identifier)
-
-      const { data, error: dbError } = await supabase.rpc('verify_student_identifier', {
-        search_identifier: searchId,
-        raw_identifier: form.value.identifier.trim()
-      })
-
-      if (dbError) throw dbError
-
-      if (!data) {
-        error.value = 'No student found with this email or phone number. Please contact your administrator.'
-        return 
-      }
-
-      verifiedStudentName.value = data.full_name
-      step.value = 2
-    } catch (err) {
-      error.value = 'An error occurred while verifying: ' + err.message
-    } finally {
-      loading.value = false
-    }
-  }
 
   const handleLogin = async () => {
     loading.value = true
     error.value = ''
 
     try {
-      const searchId = formatIdentifier(form.value.identifier)
-
-      const { data, error: rpcError } = await supabase.rpc('student_login', {
-        login_identifier: searchId,
-        raw_identifier: form.value.identifier.trim(),
-        login_password: form.value.password
+      // 1. Authenticate with Supabase Auth using email
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: form.value.email.trim(),
+        password: form.value.password
       })
 
-      if (rpcError) throw rpcError
-
-      if (!data) {
-        error.value = 'Incorrect password. Remember, the default is 000000.'
+      if (authError) {
+        error.value = 'Incorrect email or password. Please try again.'
         return
+      }
+
+      // 2. Fetch the corresponding student profile from the `students` table
+      const { data: studentProfile, error: profileError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profileError || !studentProfile) {
+        throw new Error('Student profile not found. Please contact administration.')
       }
 
       // Store student session
       localStorage.setItem('user_role', 'student')
-      localStorage.setItem('student_session', JSON.stringify(data))
+      localStorage.setItem('student_session', JSON.stringify(studentProfile))
       
-      // Simulate auth token presence strictly to pass any generic front-end router guards 
-      // (This is completely safe since our actual backend queries don't rely on it)
-      localStorage.setItem('supabase.auth.token', `student-session-token-${data.id}`)
-
       router.push('/student/dashboard')
 
     } catch (err) {
@@ -168,121 +127,266 @@
 </script>
 
 <style scoped>
-/* Same UI Styles */
-.auth-page {
+/* Core Page Layout */
+.auth-page-premium {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-body, #f4f6f9);
+  background-image: url('/login-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #fff;
 }
 
+/* Deep immersive overlay */
+.background-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(8, 11, 26, 0.7) 0%, rgba(20, 16, 45, 0.5) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+/* The Glassmorphic Container */
 .auth-card {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+  position: relative;
+  z-index: 2;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  margin: 2rem;
+  padding: 3.5rem 2.8rem;
+  border-radius: 28px;
+  background: rgba(14, 18, 36, 0.45);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Branding Header */
+.brand-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.brand-logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #fff;
+  box-shadow: 0 0 40px rgba(99, 102, 241, 0.4);
 }
 
 .auth-title {
-  text-align: center;
-  color: var(--color-primary, #6B59FF);
-  font-weight: bold;
+  margin: 0;
   font-size: 1.8rem;
-  margin-bottom: 0.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
 .auth-subtitle {
-  text-align: center;
-  color: var(--text-secondary, #666);
-  margin-bottom: 2rem;
-}
-
-.form-group {
-  margin-bottom: 1.2rem;
-}
-
-.form-label {
-  display: block;
-  font-weight: 500;
-  color: var(--text-primary, #333);
-}
-
-.welcome-text {
+  margin: 0.25rem 0 0;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.95rem;
-  color: var(--text-secondary, #555);
-  text-align: center;
-  background-color: rgba(107, 89, 255, 0.05);
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(107, 89, 255, 0.1);
+  font-weight: 500;
 }
 
-.d-flex { display: flex; }
-.justify-content-between { justify-content: space-between; }
-.align-items-center { align-items: center; }
-.mb-1 { margin-bottom: 0.25rem; }
-.mb-0 { margin-bottom: 0; }
-.mb-3 { margin-bottom: 1rem; }
-.text-primary { color: var(--color-primary, #6B59FF); }
-.text-muted { color: var(--text-secondary, #888); }
-.bg-light { background-color: #f8f9fa; }
-
-.btn-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 0.85rem;
-  cursor: pointer;
-  text-decoration: underline;
+/* Elegant Floating Forms */
+.elegant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.input {
+.floating-group {
+  position: relative;
+}
+
+.floating-input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border-color, #dee2e6);
-  border-radius: 6px;
-  box-sizing: border-box;
-}
-.input:focus {
-  outline: none;
-  border-color: var(--color-primary, #6B59FF);
-}
-.input:disabled {
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 0.8rem;
-  background-color: var(--color-primary, #6B59FF);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 1rem;
+  height: 56px;
+  padding: 1.25rem 1rem 0.25rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
   font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.btn-primary:hover {
-  background-color: color-mix(in srgb, var(--color-primary) 80%, black);
+.floating-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 
+    0 0 0 4px rgba(99, 102, 241, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.floating-label {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.95rem;
+  font-weight: 500;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.alert-danger {
-  color: #dc3545;
-  background-color: #f8d7da;
-  border-color: #f5c6cb;
-  padding: 0.75rem 1.25rem;
-  margin-top: 1rem;
-  border-radius: 6px;
+.password-hint {
+  text-align: right;
+  margin-top: 0.4rem;
+}
+
+.password-hint small {
+  color: rgba(236, 72, 153, 0.8);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Floating label magic */
+.floating-input:focus ~ .floating-label,
+.floating-input:not(:placeholder-shown) ~ .floating-label {
+  top: 0.8rem;
+  font-size: 0.75rem;
+  color: rgba(99, 102, 241, 0.9);
+}
+
+.icon-left {
+  font-size: 1.05rem;
+}
+
+.icon-right {
+  margin-left: 0.3rem;
+  font-size: 1.2rem;
+  transition: transform 0.2s;
+}
+
+/* Premium Button */
+.btn-premium {
+  height: 56px;
+  width: 100%;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-premium::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.btn-premium:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(236, 72, 153, 0.5);
+}
+
+.btn-premium:hover:not(:disabled)::after {
+  opacity: 1;
+}
+
+.btn-premium:hover:not(:disabled) .icon-right {
+  transform: translateX(4px);
+}
+
+.btn-premium:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-premium.is-loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+/* Error State UI */
+.error-glass {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.error-icon {
+  color: #ef4444;
+  font-size: 1.5rem;
+}
+
+.error-content strong {
+  display: block;
+  color: #ef4444;
   font-size: 0.9rem;
+}
+
+.error-content p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Micro-animations Staggered Loading */
+.staggered-1 { animation: fadeSlideUp 0.8s ease 0.1s both; }
+.staggered-2 { animation: fadeSlideUp 0.8s ease 0.2s both; }
+.staggered-3 { animation: fadeSlideUp 0.8s ease 0.3s both; }
+.staggered-4 { animation: fadeSlideUp 0.8s ease 0.4s both; }
+.staggered-5 { animation: fadeSlideUp 0.8s ease 0.5s both; }
+.staggered-6 { animation: fadeSlideUp 0.8s ease 0.6s both; }
+
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
