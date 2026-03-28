@@ -222,6 +222,8 @@ const checkAuthStatus = async () => {
     inset 0 -1px 1px rgba(0, 0, 0, 0.3);
 }
 
+
+
 /* Branding Header */
 .brand-header {
   text-align: center;
@@ -238,14 +240,14 @@ const checkAuthStatus = async () => {
   width: 64px;
   height: 64px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+  background: linear-gradient(135deg, rgba(107, 89, 255, 0.2), rgba(144, 130, 255, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
   color: #fff;
-  box-shadow: 0 0 40px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 40px rgba(107, 89, 255, 0.4);
 }
 
 .auth-title {
@@ -261,6 +263,16 @@ const checkAuthStatus = async () => {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.95rem;
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .auth-card {
+    padding: 2rem 1rem;
+    margin: 1rem;
+  }
+  .auth-title {
+    font-size: 1.5rem;
+  }
 }
 
 /* Elegant Floating Forms */
@@ -291,9 +303,9 @@ const checkAuthStatus = async () => {
 .floating-input:focus {
   outline: none;
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(107, 89, 255, 0.5);
   box-shadow: 
-    0 0 0 4px rgba(99, 102, 241, 0.1),
+    0 0 0 4px rgba(107, 89, 255, 0.15),
     inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -317,7 +329,7 @@ const checkAuthStatus = async () => {
 .floating-input:not(:placeholder-shown) ~ .floating-label {
   top: 0.8rem;
   font-size: 0.75rem;
-  color: rgba(99, 102, 241, 0.9);
+  color: rgba(107, 89, 255, 0.9);
 }
 
 .icon-left {
@@ -336,7 +348,7 @@ const checkAuthStatus = async () => {
   width: 100%;
   border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #6B59FF 0%, #8b7dff 100%);
   color: white;
   font-size: 1.05rem;
   font-weight: 700;
@@ -345,7 +357,7 @@ const checkAuthStatus = async () => {
   justify-content: center;
   align-items: center;
   margin-top: 1rem;
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 4px 15px rgba(107, 89, 255, 0.35);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
@@ -362,7 +374,7 @@ const checkAuthStatus = async () => {
 
 .btn-premium:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(236, 72, 153, 0.5);
+  box-shadow: 0 8px 25px rgba(107, 89, 255, 0.5);
 }
 
 .btn-premium:hover:not(:disabled)::after {
