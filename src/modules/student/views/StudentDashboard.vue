@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <StudentLayout @edit-profile="openEditProfileModal">
     <div class="dashboard-wrapper">
       <div v-if="loading" class="loading-state py-5 text-center">
@@ -332,9 +332,10 @@
                     </tbody>
                   </table>
                 </div>
-                <div v-else class="empty-payments py-5 text-center">
-                  <i class="bi bi-cash-stack text-muted mb-2 d-block" style="font-size: 2rem;"></i>
-                  <p class="text-muted mb-0">No payment history recorded yet.</p>
+                <div v-else class="empty-state-card w-100 mx-auto">
+                  <div class="empty-icon"><i class="bi bi-receipt"></i></div>
+                  <h4 class="empty-title">No Payment History</h4>
+                  <p class="empty-subtitle">There are no payments recorded for you yet.</p>
                 </div>
               </div>
             </div>
@@ -408,9 +409,10 @@
                 </div>
               </div>
             </div>
-            <div v-else class="empty-records py-4 px-3 text-center mb-4">
-              <i class="bi bi-award text-muted mb-2 d-block" style="font-size: 1.5rem;"></i>
-              <p class="small text-muted mb-0">No academic records found yet.</p>
+            <div v-else class="empty-state-card w-100 mx-auto mb-4">
+              <div class="empty-icon"><i class="bi bi-journal-x"></i></div>
+              <h4 class="empty-title">No Academic Records</h4>
+              <p class="empty-subtitle">You do not have any recorded grades for past semesters yet.</p>
             </div>
 
             <!-- Audit Log -->

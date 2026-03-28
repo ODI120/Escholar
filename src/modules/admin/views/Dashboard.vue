@@ -58,8 +58,10 @@
         <h5 class="section-title">Best Performing Students</h5>
         <p>Top 3 students with the highest GPA</p>
       </div>
-      <div v-if="topStudents.length === 0" class="text-center py-5 text-muted">
-        <p>No academic records available yet</p>
+      <div v-if="topStudents.length === 0" class="empty-state-card w-100 mx-auto">
+        <div class="empty-icon"><i class="bi bi-graph-up"></i></div>
+        <h4 class="empty-title">No Academic Records</h4>
+        <p class="empty-subtitle">Once beneficiaries have their semester GPAs recorded, top performers will appear here.</p>
       </div>
 
       <div v-else class="best-students-grid">
@@ -109,8 +111,10 @@
           <span class="visually-hidden">Loading...</span>
         </div>
 
-        <div v-else-if="recentStudents.length === 0" class="text-center py-4">
-          <p class="text-muted mb-0">No students found</p>
+        <div v-else-if="recentStudents.length === 0" class="empty-state-card w-100 mx-auto">
+          <div class="empty-icon"><i class="bi bi-clock-history"></i></div>
+          <h4 class="empty-title">No Recent Activity</h4>
+          <p class="empty-subtitle">Newly added beneficiaries and recent updates will appear here.</p>
         </div>
 
         <div v-else class="table-responsive">

@@ -36,8 +36,10 @@
           <span class="visually-hidden">Loading...</span>
         </div>
 
-        <div v-else-if="filteredStudents.length === 0" class="text-center py-4">
-          <p class="text-muted mb-0">No beneficiaries found</p>
+        <div v-else-if="filteredStudents.length === 0" class="empty-state-card w-100 mx-auto" style="grid-column: 1 / -1;">
+          <div class="empty-icon"><i class="bi bi-mortarboard"></i></div>
+          <h4 class="empty-title">No Graduates Found</h4>
+          <p class="empty-subtitle">We couldn't find any graduated alumni matching your criteria. Try adjusting your filters.</p>
         </div>
 
         <div v-else class="beneficiaries-grid">

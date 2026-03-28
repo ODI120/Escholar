@@ -20,11 +20,15 @@
         <h3 class="card-title">Admin users</h3>
         <span class="badge">{{ admins.length }} total</span>
       </div>
-      <div v-if="adminsError" class="empty-state">
-        <p>{{ adminsError }}</p>
+      <div v-if="adminsError" class="empty-state-card">
+        <div class="empty-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <h4 class="empty-title">Error Loading Admins</h4>
+        <p class="empty-subtitle">{{ adminsError }}</p>
       </div>
-      <div v-else-if="adminsLoading" class="empty-state">
-        <p>Loading admins...</p>
+      <div v-else-if="adminsLoading" class="empty-state-card">
+        <div class="empty-icon"><div class="loader"></div></div>
+        <h4 class="empty-title">Loading Data</h4>
+        <p class="empty-subtitle">Please wait while we fetch the administrative records.</p>
       </div>
       <div v-else-if="admins.length" class="admin-list">
         <div
@@ -58,8 +62,10 @@
           </div>
         </div>
       </div>
-      <div v-else class="empty-state">
-        <p>No admins yet. Use the form above to create your first admin.</p>
+      <div v-else class="empty-state-card">
+        <div class="empty-icon"><i class="bi bi-shield-lock"></i></div>
+        <h4 class="empty-title">No Administrators Found</h4>
+        <p class="empty-subtitle">There are no admins recorded in the system yet. Use the Create Admin button above to provision your first account.</p>
       </div>
     </div>
     <!-- Create Admin Modal -->
@@ -497,11 +503,7 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.empty-state {
-  padding: 1.25rem 0.25rem 0.25rem;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
+
 
 .modal-backdrop {
   position: fixed;
