@@ -41,24 +41,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized: Missing Auth Token' }), { status: 401, headers: corsHeaders })
     }
 
-    // 1. Manually decode the User ID (safe since we verify next)
-    let callerId: string
-    try {
-      const payload = stealthToken.split('.')[1]
-      callerId = JSON.parse(atob(payload)).sub
-    } catch (err) {
-      return new Response(JSON.stringify({ error: 'Malformed Token' }), { status: 400, headers: corsHeaders })
-    }
-
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-    // 2. SOURCE-OF-TRUTH VERIFICATION (High-Security)
-    // We use the Service Role to ask the Auth Server: "Is this User ID valid?"
-    const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.admin.getUserById(callerId)
+    // 1. SOURCE-OF-TRUTH CRYPTOGRAPHIC VERIFICATION (High-Security)
+    // Send the token to the Auth Server to verify its secret signature. Do NOT decode it manually.
+    const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(stealthToken)
     
     if (callerError || !caller) {
-      console.error("SOURCE_OF_TRUTH_REJECTION:", callerError?.message)
-      return new Response(JSON.stringify({ error: 'Unauthorized: Session invalid or expired' }), { status: 401, headers: corsHeaders })
+      console.error("CRYPTOGRAPHIC_REJECTION:", callerError?.message)
+      return new Response(JSON.stringify({ error: 'Unauthorized: Session invalid, expired, or forged' }), { status: 401, headers: corsHeaders })
     }
 
     // 3. ADMIN ROLE VERIFICATION

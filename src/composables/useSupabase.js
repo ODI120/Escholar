@@ -399,17 +399,6 @@ export const useSupabaseStudents = () => {
 
       const data = await response.json()
 
-      if (error) {
-        let message = error.message || 'Failed to create student.'
-        try {
-          if (error.context) {
-            const body = await error.context.json()
-            message = body.error || body.message || message
-          }
-        } catch (e) { /* ignore parse error */ }
-        throw new Error(message)
-      }
-
       if (data?.error) {
         throw new Error(data.error)
       }

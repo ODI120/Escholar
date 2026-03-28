@@ -36,20 +36,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized: Missing Auth Token' }), { status: 401, headers: corsHeaders })
     }
 
-    let callerId: string
-    try {
-      const payload = stealthToken.split('.')[1]
-      callerId = JSON.parse(atob(payload)).sub
-    } catch (err) {
-      return new Response(JSON.stringify({ error: 'Malformed Token' }), { status: 400, headers: corsHeaders })
-    }
-
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
-    const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.admin.getUserById(callerId)
+    // SOURCE-OF-TRUTH CRYPTOGRAPHIC VERIFICATION
+    // Send the token to the Auth Server to verify its secret signature. Do NOT decode it manually.
+    const { data: { user: caller }, error: callerError } = await supabaseAdmin.auth.getUser(stealthToken)
     
     if (callerError || !caller) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Session invalid or expired' }), { status: 401, headers: corsHeaders })
+      return new Response(JSON.stringify({ error: 'Unauthorized: Session invalid, expired, or forged' }), { status: 401, headers: corsHeaders })
     }
 
     const { data: adminRecord, error: adminError } = await supabaseAdmin
