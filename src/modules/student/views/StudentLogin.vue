@@ -101,6 +101,11 @@
         return
       }
 
+      // Fix navigation guard race condition
+      if (authData?.session?.access_token) {
+        localStorage.setItem('supabase.auth.token', authData.session.access_token)
+      }
+
       // 2. Fetch the corresponding student profile from the `students` table
       const { data: studentProfile, error: profileError } = await supabase
         .from('students')

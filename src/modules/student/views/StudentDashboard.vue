@@ -436,69 +436,64 @@
 
     <!-- Record GPA Modal -->
     <Transition name="modal-fade">
-      <div v-if="showAcademicModal" class="modal-overlay" @click.self="showAcademicModal = false">
-        <div class="payment-modal form-card">
-          <div class="modal-card-head between">
-            <div class="d-flex align-items-center gap-2">
-              <div class="icon-box-sm success">
+      <div v-if="showAcademicModal" class="custom-modal-backdrop" @click.self="showAcademicModal = false">
+        <div class="custom-modal-wrapper" style="max-width: 500px;">
+          <div class="custom-modal-header">
+            <div class="header-titles">
+              <div class="header-icon">
                 <i class="bi bi-award"></i>
               </div>
-              <h3>Record Semester GPA</h3>
+              <div class="title-group">
+                <h3 class="custom-modal-title">Record Semester GPA</h3>
+                <p class="custom-modal-subtitle">Submit your academic performance for review</p>
+              </div>
             </div>
-            <button class="close-btn" @click="showAcademicModal = false" :disabled="academicLoading">
-              <i class="bi bi-x-lg"></i>
+            <button type="button" class="custom-close-btn" @click="showAcademicModal = false" :disabled="academicLoading">
+              <i class="bi bi-x"></i>
             </button>
           </div>
 
-          <form @submit.prevent="submitAcademicRecord" class="modal-card-body">
-            <!-- Semester Selection -->
-            <div class="form-group mb-3">
-              <label>Select Semester <span class="text-danger">*</span></label>
-              <select v-model="academicForm.year" class="form-control" required>
-                <option value="" disabled>Choose a pending semester</option>
-                <option v-for="sem in pendingSemesters" :key="sem.value" :value="sem.value">
-                  {{ sem.label }}
-                </option>
-              </select>
-              <div class="form-text mt-1">Only showing semesters yet to be recorded</div>
-            </div>
-
-            <!-- Selected Semester Display -->
-            <div v-if="selectedSemesterLabel" class="semester-preview mb-3">
-              <small>Recording for:</small>
-              <div class="sem-preview-label">{{ selectedSemesterLabel }}</div>
-            </div>
-
-            <!-- GPA Input -->
-            <div class="form-group mt-3">
-              <label>GPA (0.00 - 5.00) <span class="text-danger">*</span></label>
-              <div class="input-with-icon">
-                <i class="bi bi-calculator"></i>
-                <input type="number" v-model="academicForm.gpa" class="form-control" required min="0" max="5.0" step="0.01" placeholder="e.g. 4.25">
+          <form @submit.prevent="submitAcademicRecord" class="custom-modal-form">
+            <div class="custom-modal-body" style="gap: 1.25rem;">
+              <div class="custom-input-group">
+                <label class="custom-label">Select Semester <span class="required">*</span></label>
+                <select v-model="academicForm.year" class="custom-select" required>
+                  <option value="" disabled>Choose a pending semester</option>
+                  <option v-for="sem in pendingSemesters" :key="sem.value" :value="sem.value">
+                    {{ sem.label }}
+                  </option>
+                </select>
+                <div class="form-text mt-1" style="font-size: 0.75rem; color: var(--text-muted);">Only showing semesters yet to be recorded</div>
               </div>
-              <div v-if="parseFloat(academicForm.gpa) >= 4.0" class="mt-1">
-                <small class="text-success" style="display:flex;align-items:center;gap:.4rem;font-weight:600">
-                  <i class="bi bi-star-fill"></i> Eligible for high performance incentive!
-                </small>
-              </div>
-            </div>
 
-            <!-- Evidence Upload -->
-            <div class="form-group mt-3 mb-4">
-              <label>Evidence (Result/Transcript) <span class="text-danger">*</span></label>
-              <div class="file-upload-wrapper">
-                <input type="file" @change="handleFileUpload" class="form-control" accept=".pdf,image/*" required>
-                <div class="form-text mt-1">Upload a clear PDF or image of the result as evidence.</div>
+              <!-- Selected Semester Display -->
+              <div v-if="selectedSemesterLabel" class="semester-preview p-2 rounded" style="background: rgba(107, 89, 255, 0.05); border: 1px dashed rgba(107, 89, 255, 0.2);">
+                <small class="text-muted d-block mb-1">Recording for:</small>
+                <div class="fw-bold text-primary">{{ selectedSemesterLabel }}</div>
+              </div>
+
+              <div class="custom-input-group">
+                <label class="custom-label">GPA (0.00 - 5.00) <span class="required">*</span></label>
+                <input type="number" v-model="academicForm.gpa" class="custom-input" required min="0" max="5.0" step="0.01" placeholder="e.g. 4.25">
+                <div v-if="parseFloat(academicForm.gpa) >= 4.0" class="mt-1">
+                  <small class="text-success fw-bold" style="display:flex;align-items:center;gap:.4rem;">
+                    <i class="bi bi-star-fill"></i> Eligible for high performance incentive!
+                  </small>
+                </div>
+              </div>
+
+              <div class="custom-input-group">
+                <label class="custom-label">Evidence (Result/Transcript) <span class="required">*</span></label>
+                <input type="file" @change="handleFileUpload" class="custom-input" accept=".pdf,image/*" required>
+                <div class="form-text mt-1" style="font-size: 0.75rem; color: var(--text-muted);">Upload a clear PDF or image of the result as evidence.</div>
               </div>
             </div>
 
-            <!-- Actions -->
-            <div class="modal-actions pt-2 border-top">
-              <button type="button" class="btn-light-secondary" @click="showAcademicModal = false" :disabled="academicLoading">Cancel</button>
-              <button type="submit" class="btn-primary" :disabled="academicLoading || !academicForm.year">
-                <span v-if="academicLoading" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-check2-circle me-1"></i>
-                {{ academicLoading ? 'Saving...' : 'Record GPA' }}
+            <div class="custom-modal-footer">
+              <button type="button" class="custom-btn custom-btn-outline" @click="showAcademicModal = false" :disabled="academicLoading">Cancel</button>
+              <button type="submit" class="custom-btn custom-btn-primary" :disabled="academicLoading || !academicForm.year">
+                <span v-if="academicLoading" class="loader-sm mr-2"></span>
+                <span v-else>Record GPA</span>
               </button>
             </div>
           </form>
@@ -508,98 +503,106 @@
     
     <!-- Edit Profile Modal -->
     <Transition name="modal-fade">
-      <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-        <div class="edit-profile-modal payment-modal form-card">
-          <div class="modal-card-head between">
-            <div class="d-flex align-items-center gap-2">
-              <div class="icon-box-sm info">
+      <div v-if="showEditModal" class="custom-modal-backdrop" @click.self="showEditModal = false">
+        <div class="custom-modal-wrapper" style="max-width: 850px;">
+          <div class="custom-modal-header">
+            <div class="header-titles">
+              <div class="header-icon edit-icon">
                 <i class="bi bi-person-gear"></i>
               </div>
-              <h3>Edit Profile</h3>
+              <div class="title-group">
+                <h3 class="custom-modal-title">Edit Profile</h3>
+                <p class="custom-modal-subtitle">Update your personal and banking information</p>
+              </div>
             </div>
-            <button class="close-btn" @click="showEditModal = false" :disabled="editLoading">
-              <i class="bi bi-x-lg"></i>
+            <button type="button" class="custom-close-btn" @click="showEditModal = false" :disabled="editLoading">
+              <i class="bi bi-x"></i>
             </button>
           </div>
 
-          <form @submit.prevent="handleUpdateProfile" class="modal-card-body">
-            <!-- Profile Column Layout -->
-            <div class="edit-modal-layout">
-              <!-- Left: Avatar Upload -->
-              <div class="avatar-edit-col">
-                <div class="profile-avatar big">
-                  <img v-if="profilePreview || studentData.profile_picture" :src="profilePreview || studentData.profile_picture" alt="Avatar">
-                  <span v-else>{{ studentData.full_name?.charAt(0) }}</span>
-                  <label class="avatar-upload-overlay">
-                    <i class="bi bi-camera-fill"></i>
-                    <input type="file" @change="handleProfileImageUpload" accept="image/*" hidden>
-                  </label>
-                </div>
-                <p class="text-sm text-center text-muted mt-2">Click icon to change picture</p>
-              </div>
-
-              <!-- Right: Form Fields -->
-              <div class="form-fields-col">
-                <div class="modal-section-title">Personal Details</div>
-                <div class="row g-3">
-                  <div class="col-md-12">
-                    <label>Full Name (Read-only)</label>
-                    <input type="text" :value="studentData.full_name" class="form-control" disabled>
+          <form @submit.prevent="handleUpdateProfile" class="custom-modal-form">
+            <div class="custom-modal-body">
+              <div class="edit-modal-layout-new" style="display: grid; grid-template-columns: 240px 1fr; gap: 2.5rem;">
+                <!-- Left: Avatar Upload -->
+                <div class="avatar-edit-col" style="display: flex; flex-direction: column; align-items: center; padding: 2rem; background: linear-gradient(135deg, rgba(107, 89, 255, 0.05) 0%, rgba(107, 89, 255, 0) 100%); border-radius: 20px;">
+                  <div class="profile-avatar big" style="width: 160px; height: 160px; font-size: 3.5rem; position: relative; border: 5px solid white; box-shadow: var(--shadow-xl); border-radius: 30px; overflow: hidden; background: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center;">
+                    <img v-if="profilePreview || studentData.profile_picture" :src="profilePreview || studentData.profile_picture" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                    <span v-else>{{ studentData.full_name?.charAt(0) }}</span>
+                    <label class="avatar-upload-overlay" style="position: absolute; bottom: 0; right: 0; left: 0; height: 40%; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; opacity: 1;">
+                      <i class="bi bi-camera-fill"></i>
+                      <input type="file" @change="handleProfileImageUpload" accept="image/*" hidden>
+                    </label>
                   </div>
-                  <div class="col-md-6">
-                    <label>Email Address</label>
-                    <input type="email" v-model="editForm.email" class="form-control" placeholder="Email">
-                  </div>
-                  <div class="col-md-6">
-                    <label>Phone Number</label>
-                    <input type="text" v-model="editForm.phone_number" class="form-control" placeholder="Phone">
-                  </div>
-                  <div class="col-md-6">
-                    <label>Gender</label>
-                    <select v-model="editForm.gender" class="form-control">
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
-                  </div>
+                  <p class="text-sm text-center text-muted mt-2">Click icon to change picture</p>
                 </div>
 
-                <div class="modal-section-title mt-4">Parent / Guardian Information</div>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label>Guardian Name</label>
-                    <input type="text" v-model="editForm.parent_name" class="form-control" placeholder="Guardian Name">
+                <!-- Right: Form Fields -->
+                <div class="form-fields-col">
+                  <div class="form-section">
+                    <h4 class="section-title">Personal Details</h4>
+                    <div class="custom-form-grid">
+                      <div class="custom-input-group full-width">
+                        <label class="custom-label">Full Name (Read-only)</label>
+                        <input type="text" :value="studentData.full_name" class="custom-input" disabled style="opacity: 0.7; cursor: not-allowed;">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Email Address</label>
+                        <input type="email" v-model="editForm.email" class="custom-input" placeholder="Email">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Phone Number</label>
+                        <input type="text" v-model="editForm.phone_number" class="custom-input" placeholder="Phone">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Gender</label>
+                        <select v-model="editForm.gender" class="custom-select">
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label>Guardian Phone</label>
-                    <input type="text" v-model="editForm.parent_phone" class="form-control" placeholder="Guardian Phone">
-                  </div>
-                </div>
 
-                <div class="modal-section-title mt-4">Banking Information</div>
-                <div class="row g-3">
-                  <div class="col-md-12">
-                    <label>Bank Name</label>
-                    <input type="text" v-model="editForm.bank_name" class="form-control" placeholder="e.g. Zenith Bank">
+                  <div class="form-section mt-4">
+                    <h4 class="section-title">Parent / Guardian Information</h4>
+                    <div class="custom-form-grid">
+                      <div class="custom-input-group">
+                        <label class="custom-label">Guardian Name</label>
+                        <input type="text" v-model="editForm.parent_name" class="custom-input" placeholder="Guardian Name">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Guardian Phone</label>
+                        <input type="text" v-model="editForm.parent_phone" class="custom-input" placeholder="Guardian Phone">
+                      </div>
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label>Account Name</label>
-                    <input type="text" v-model="editForm.account_name" class="form-control" placeholder="Account Name">
-                  </div>
-                  <div class="col-md-6">
-                    <label>Account Number</label>
-                    <input type="text" v-model="editForm.account_number" class="form-control" placeholder="10 Digits">
+
+                  <div class="form-section mt-4">
+                    <h4 class="section-title">Banking Information</h4>
+                    <div class="custom-form-grid">
+                      <div class="custom-input-group full-width">
+                        <label class="custom-label">Bank Name</label>
+                        <input type="text" v-model="editForm.bank_name" class="custom-input" placeholder="e.g. Zenith Bank">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Account Name</label>
+                        <input type="text" v-model="editForm.account_name" class="custom-input" placeholder="Account Name">
+                      </div>
+                      <div class="custom-input-group">
+                        <label class="custom-label">Account Number</label>
+                        <input type="text" v-model="editForm.account_number" class="custom-input" placeholder="10 Digits">
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Actions -->
-            <div class="modal-actions pt-2 border-top mt-4">
-              <button type="button" class="btn-light-secondary" @click="showEditModal = false" :disabled="editLoading">Cancel</button>
-              <button type="submit" class="btn-primary" :disabled="editLoading">
-                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
-                <i v-else class="bi bi-save me-1"></i>
-                {{ editLoading ? 'Saving...' : 'Update Profile' }}
+            <div class="custom-modal-footer">
+              <button type="button" class="custom-btn custom-btn-outline" @click="showEditModal = false" :disabled="editLoading">Cancel</button>
+              <button type="submit" class="custom-btn custom-btn-primary" :disabled="editLoading">
+                <span v-if="editLoading" class="loader-sm mr-2"></span>
+                <span v-else>Update Profile</span>
               </button>
             </div>
           </form>
@@ -1402,36 +1405,12 @@ onUnmounted(() => {
     padding: 0 1rem;
   } */
 }
-/* Modern Edit Profile Modal Styles */
-.edit-profile-modal {
-  max-width: 850px !important;
-  width: 95% !important;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(107, 89, 255, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  max-height: 90vh;
-  overflow: hidden;
-}
 
-.edit-profile-modal .modal-card-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem 2rem;
-}
-
-.edit-profile-modal .modal-card-head,
-.edit-profile-modal .modal-actions {
-  flex-shrink: 0;
-}
-
-.edit-modal-layout {
+/* Modal Layout Overrides for Student Dashboard */
+.edit-modal-layout-new {
   display: grid;
   grid-template-columns: 240px 1fr;
   gap: 2.5rem;
-  padding: 1.5rem 0;
 }
 
 .avatar-edit-col {
@@ -1459,12 +1438,6 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.profile-avatar.big img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .avatar-upload-overlay {
   position: absolute;
   bottom: 0;
@@ -1478,83 +1451,13 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  opacity: 0;
-}
-
-.profile-avatar.big:hover .avatar-upload-overlay {
   opacity: 1;
 }
 
-.avatar-upload-overlay i {
-  font-size: 1.5rem;
-  transform: translateY(10px);
-  transition: transform 0.3s;
-}
-
-.profile-avatar.big:hover .avatar-upload-overlay i {
-  transform: translateY(0);
-}
-
-.modal-section-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  letter-spacing: 1.5px;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--color-primary-light);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.form-fields-col .form-control {
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
-  transition: all 0.2s;
-  background: #f8fafc;
-}
-
-.form-fields-col .form-control:focus {
-  background: white;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px var(--color-primary-light);
-  transform: translateY(-1px);
-}
-
-.form-fields-col label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
 @media (max-width: 768px) {
-  .edit-modal-layout {
+  .edit-modal-layout-new {
     grid-template-columns: 1fr;
     gap: 1.5rem;
-  }
-  
-  .avatar-edit-col {
-    order: -1;
-    padding: 1.5rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .edit-modal-layout {
-    padding: 0;
-  }
-  .avatar-edit-col {
-    padding: 1rem;
-  }
-  .profile-avatar.big {
-    width: 120px;
-    height: 120px;
-    font-size: 2.5rem;
   }
 }
 
