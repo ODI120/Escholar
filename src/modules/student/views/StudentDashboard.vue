@@ -383,7 +383,15 @@
                 <div class="records-stack">
                   <div v-for="record in academicProgress.filter(r => r.status === 'Recorded')" :key="record.record_id" class="record-item">
                     <div class="record-info">
-                      <span class="sem-label">{{ record.expected_semester_label || `${record.semester}-${Math.ceil(record.semester_number/2)}` }}</span>
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="sem-label">{{ record.expected_semester_label }}</span>
+                        <span 
+                          class="status-badge-sm" 
+                          :class="record.verification_status || 'pending'"
+                        >
+                          {{ record.verification_status || 'pending' }}
+                        </span>
+                      </div>
                       <span class="record-gpa-val">GPA: <strong>{{ record.gpa }}</strong></span>
                     </div>
                     <div class="record-actions">
@@ -695,23 +703,13 @@ const formatDate = (dateString) => {
 // Pending semester selector
 const pendingSemesters = computed(() => {
   if (!studentData.value || !academicProgress.value) return []
-  const courseDuration = studentData.value.course_duration || 4
-  const pending = []
-  for (let year = 1; year <= courseDuration; year++) {
-    for (let semPos = 1; semPos <= 2; semPos++) {
-      const semNumber = ((year - 1) * 2) + semPos
-      const isRecorded = academicProgress.value.some(r => r.semester_number === semNumber && r.status === 'Recorded')
-      if (!isRecorded) {
-        const semLabel = semPos === 1 ? '1st' : '2nd'
-        pending.push({
-          value: `${year}-${semPos}`,
-          label: `${semLabel}-${year}L`,
-          year, semesterPosition: semPos, semesterNumber: semNumber
-        })
-      }
-    }
-  }
-  return pending
+  return academicProgress.value
+    .filter(r => r.status === 'Not Recorded')
+    .map(r => ({
+      value: r.semester_number,
+      label: r.expected_semester_label,
+      semesterNumber: r.semester_number
+    }))
 })
 
 const selectedSemesterLabel = computed(() => {
@@ -762,17 +760,20 @@ const handleAdmissionLetterUpload = async (event) => {
     const { url, error } = await uploadAdmissionLetter(studentData.value.id, file)
     if (error) throw error
 
-    const { error: updateError } = await updateStudent(studentData.value.id, {
+    const result = await updateStudent(studentData.value.id, {
       admission_letter_url: url,
       updated_at: new Date().toISOString()
     })
-    if (updateError) throw updateError
+    if (result.error) throw result.error
 
     alert('Admission letter uploaded successfully!')
     
     // Refresh local data
     const { data } = await getStudent(studentData.value.id)
-    if (data) studentData.value = data
+    if (data) {
+      studentData.value = data
+      localStorage.setItem('student_session', JSON.stringify(data))
+    }
   } catch (err) {
     console.error('Error uploading admission letter:', err)
     alert(err.message || 'Failed to upload admission letter. Please try again.')
@@ -799,15 +800,18 @@ const handleUpdateProfile = async () => {
       updated_at: new Date().toISOString()
     }
 
-    const { error: updateError } = await updateStudent(studentData.value.id, updates)
-    if (updateError) throw updateError
+    const result = await updateStudent(studentData.value.id, updates)
+    if (result.error) throw result.error
 
     showEditModal.value = false
     alert('Profile updated successfully!')
     
     // Refresh local data
     const { data } = await getStudent(studentData.value.id)
-    if (data) studentData.value = data
+    if (data) {
+      studentData.value = data
+      localStorage.setItem('student_session', JSON.stringify(data))
+    }
 
   } catch (err) {
     console.error('Error updating profile:', err)
@@ -837,24 +841,27 @@ const submitAcademicRecord = async () => {
       evidence_url = url
     }
 
-    const [yearStr, semPositionStr] = academicForm.value.year.split('-')
-    const year = parseInt(yearStr)
-    const semesterPosition = parseInt(semPositionStr)
-    const semesterNumber = ((year - 1) * 2) + semesterPosition
-    const semesterLabel = semesterPosition === 1 ? '1st' : '2nd'
-    const currentYear = new Date().getFullYear()
-    const admissionYear = studentData.value.year_of_admission || currentYear
-    const sessionYear = admissionYear + (year - 1)
-    const session = `${sessionYear}/${sessionYear + 1}`
+    const selectedSem = academicProgress.value.find(r => r.semester_number === academicForm.value.year)
+    if (!selectedSem) throw new Error('Please select a valid semester.')
+
+    // Derive semester position and year from semester_number
+    const semPos = selectedSem.semester_number % 2 === 0 ? 2 : 1
+    const yearNum = Math.ceil(selectedSem.semester_number / 2)
+    const semesterLabel = semPos === 1 ? '1st' : '2nd'
+    
+    // Build session string from admission year
+    const admissionYear = studentData.value.year_of_admission || new Date().getFullYear()
+    const sessionStartYear = admissionYear + yearNum - 1
+    const session = `${sessionStartYear}/${sessionStartYear + 1}`
 
     const payload = {
       student_id: studentData.value.id,
       semester: semesterLabel,
-      session,
+      session: session,
       gpa: academicForm.value.gpa === '' ? null : Number.parseFloat(academicForm.value.gpa),
-      semester_number: semesterNumber,
+      semester_number: selectedSem.semester_number,
       evidence_url,
-      status: 'Recorded'
+      status: 'pending'
     }
 
     const { error } = await createAcademicRecord(payload)
@@ -908,33 +915,25 @@ const renderAcademicChart = async () => {
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
   const tooltipBg = isDark ? 'rgba(17,24,39,0.95)' : 'rgba(15,15,30,0.88)'
 
-  const labels = academicProgress.value.map(r => {
-    const semNum = r.semester_number
-    const semPos = semNum % 2 === 0 ? 2 : 1
-    const yearNum = Math.ceil(semNum / 2)
-    const levelStr = `${yearNum * 100}L`
-    const ordinal = semPos === 1 ? '1st' : '2nd'
-    return `${ordinal}-${levelStr}`
-  })
-  const gpas = academicProgress.value.map(r => r.gpa ?? null)
+  const labels = academicProgress.value.map(r => r.expected_semester_label.replace('Semester ', 'S').replace(' - Year ', '/Y'))
+  const gpas = academicProgress.value.map(r => r.gpa ?? 0)
 
-  const primaryHex = isDark ? '#8475f850' : '#6B59FF50'
-  const backgroundColors = gpas.map(gpa => {
-    if (gpa === null) return isDark ? 'rgba(156,163,175,0.30)' : 'rgba(156,163,175,0.20)'
-    if (gpa >= 4.5) return 'rgba(3,138,82,0.22)'
-    if (gpa >= 4.0) return 'rgba(0,194,255,0.18)'
-    if (gpa >= 3.5) return 'rgba(255,153,0,0.20)'
-    const r = parseInt(primaryHex.slice(1,3),16)
-    const g = parseInt(primaryHex.slice(3,5),16)
-    const b = parseInt(primaryHex.slice(5,7),16)
-    return `rgba(${r},${g},${b},0.22)`
+  const backgroundColors = academicProgress.value.map(r => {
+    if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.1)' : 'rgba(156, 163, 175, 0.05)'
+    if (r.verification_status === 'rejected') return 'rgba(239, 68, 68, 0.2)'
+    if (r.verification_status === 'pending') return 'rgba(245, 158, 11, 0.2)'
+    
+    // Verified High Performance
+    if (r.gpa >= 4.0) return 'rgba(34, 197, 94, 0.3)'
+    return isDark ? 'rgba(107, 89, 255, 0.3)' : 'rgba(107, 89, 255, 0.2)'
   })
-  const borderColors = gpas.map(gpa => {
-    if (gpa === null) return isDark ? 'rgba(156,163,175,0.4)' : 'rgba(156,163,175,0.5)'
-    if (gpa >= 4.5) return '#038a5226'
-    if (gpa >= 4.0) return '#00c2ff26'
-    if (gpa >= 3.5) return '#ff990026'
-    return primaryHex
+
+  const borderColors = academicProgress.value.map(r => {
+    if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(156, 163, 175, 0.1)'
+    if (r.verification_status === 'rejected') return '#ef4444'
+    if (r.verification_status === 'pending') return '#f59e0b'
+    if (r.gpa >= 4.0) return '#22c55e'
+    return '#6B59FF'
   })
 
   chartInstance.value = new Chart(ctx, {
@@ -942,44 +941,34 @@ const renderAcademicChart = async () => {
     data: {
       labels,
       datasets: [{
-        label: 'GPA per Semester',
+        label: 'Semester GPA',
         data: gpas,
         backgroundColor: backgroundColors,
         borderColor: borderColors,
-        borderWidth: 1,
-        borderRadius: 8,
+        borderWidth: 2,
+        borderRadius: 6,
         borderSkipped: false,
         barThickness: 'flex',
-        maxBarThickness: 56
+        maxBarThickness: 40
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            font: { size: 12, weight: '600', family: 'inherit' },
-            color: textColor,
-            padding: 16,
-            usePointStyle: true,
-            pointStyle: 'rectRounded'
-          }
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: tooltipBg,
           padding: 12,
-          titleFont: { size: 13, weight: '700' },
-          bodyFont: { size: 12 },
-          cornerRadius: 10,
           displayColors: true,
           callbacks: {
-            title: (items) => items[0].label,
-            label: (ctx) => {
-              if (ctx.parsed.y === null) return '  Not yet recorded'
-              return `  GPA: ${ctx.parsed.y.toFixed(2)}`
+            label: (context) => {
+              const record = academicProgress.value[context.dataIndex]
+              if (record.status === 'Not Recorded') return ' Not Recorded'
+              let label = ` GPA: ${record.gpa}`
+              if (record.verification_status) label += ` (${record.verification_status})`
+              return label
             }
           }
         }
@@ -988,18 +977,12 @@ const renderAcademicChart = async () => {
         y: {
           beginAtZero: true,
           max: 5.0,
-          title: {
-            display: true,
-            text: 'GPA',
-            color: textColor,
-            font: { size: 11, weight: '600' }
-          },
-          ticks: { font: { size: 10 }, color: textColor, stepSize: 0.5 },
-          grid: { color: gridColor, drawBorder: false }
+          grid: { color: gridColor, drawBorder: false },
+          ticks: { color: textColor, font: { size: 10 }, stepSize: 1 }
         },
         x: {
-          ticks: { font: { size: 10 }, color: textColor, maxRotation: 45, minRotation: 0, autoSkip: false },
-          grid: { display: false }
+          grid: { display: false },
+          ticks: { color: textColor, font: { size: 9 } }
         }
       }
     }
@@ -2256,6 +2239,53 @@ onUnmounted(() => {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Academic Status Badges */
+.status-badge-sm {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.status-badge-sm.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status-badge-sm.verified {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-badge-sm.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.record-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 0.75rem;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.record-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.records-stack {
+  display: flex;
+  flex-direction: column;
 }
 </style>
 

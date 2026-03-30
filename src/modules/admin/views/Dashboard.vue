@@ -43,6 +43,16 @@
 
       <div class="stat-card">
         <div class="stat-icon">
+          <i class="bi bi-patch-check"></i>
+        </div>
+        <div class="stat-content">
+          <h3 class="stat-number">{{ stats.pendingVerifications }}</h3>
+          <p class="stat-label">Pending Verifications</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">
           <i class="bi bi-cash-coin"></i>
         </div>
         <div class="stat-content">
@@ -175,7 +185,8 @@ const stats = ref({
   totalStudents: 0,
   graduatedStudents: 0,
   nonGraduated: 0,
-  fundsDisbursed: 0
+  fundsDisbursed: 0,
+  pendingVerifications: 0
 })
 
 const recentStudents = ref([])
@@ -417,7 +428,14 @@ const loadData = async () => {
     const { data, error } = await getStudents()
     if (!error && data) {
       students.value = data
-      calculateStats()
+      
+      // Fetch pending verifications count
+      const { count, error: countError } = await supabase
+        .from('academic_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      
+      calculateStats(count || 0)
       await getTopStudents()
       recentStudents.value = data.slice(0, 5) // Show last 5 students
     }
@@ -428,7 +446,7 @@ const loadData = async () => {
   }
 }
 
-const calculateStats = () => {
+const calculateStats = (pendingCount = 0) => {
   const total = students.value.length
   const graduated = students.value.filter(s => s.status === 'graduated').length
   const funds = students.value.reduce((sum, s) => {
@@ -442,7 +460,8 @@ const calculateStats = () => {
     totalStudents: total,
     graduatedStudents: graduated,
     nonGraduated: total - graduated,
-    fundsDisbursed: funds
+    fundsDisbursed: funds,
+    pendingVerifications: pendingCount
   }
 }
 
@@ -464,8 +483,27 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-NG').format(amount || 0)
 }
 
+let adminDashboardChannel = null
+
+const setupDashboardRealtime = () => {
+  adminDashboardChannel = supabase
+    .channel('admin-dashboard-updates')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => refreshData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => refreshData())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'academic_records' }, () => refreshData())
+    .subscribe()
+}
+
 onMounted(() => {
   loadData()
+  setupDashboardRealtime()
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (adminDashboardChannel) {
+    supabase.removeChannel(adminDashboardChannel)
+  }
 })
 </script>
 
@@ -541,6 +579,16 @@ onMounted(() => {
     }
   }
   .stat-card:nth-child(4) {
+    background: #f59e0b29;
+    color: var(--text-primary);
+    border: 1px solid #f59e0b25;
+    .stat-icon{
+      background: #f59e0b25;
+      color: #f59e0b;
+    }
+  }
+
+  .stat-card:nth-child(5) {
     background: #038a5229;
     color: var(--text-primary);
     border: 1px solid #038a5225;

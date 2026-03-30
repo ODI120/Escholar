@@ -360,10 +360,36 @@
             <div class="records-stack">
               <div v-for="record in academicProgress.filter(r => r.status === 'Recorded')" :key="record.record_id" class="record-item">
                 <div class="record-info">
-                  <span class="sem-label">{{ record.expected_semester_label || `${record.semester}-${Math.ceil(record.semester_number/2)}` }}</span>
-                  <!-- <small class="session-text" v-if="record.session">{{ record.session }}</small> -->
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="sem-label">{{ record.expected_semester_label || `${record.semester}-${Math.ceil(record.semester_number/2)}` }}</span>
+                    <span 
+                      class="status-badge-sm" 
+                      :class="record.verification_status || 'pending'"
+                    >
+                      {{ record.verification_status || 'pending' }}
+                    </span>
+                  </div>
+                  <span class="record-gpa-val">GPA: <strong>{{ record.gpa }}</strong></span>
                 </div>
                 <div class="record-actions">
+                  <!-- Approve/Reject buttons for pending records -->
+                  <template v-if="(record.verification_status || 'pending') === 'pending'">
+                    <button 
+                      @click="updateGPAStatus(record.record_id, 'verified')" 
+                      class="record-action-btn approve" 
+                      title="Verify Record"
+                    >
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button 
+                      @click="updateGPAStatus(record.record_id, 'rejected')" 
+                      class="record-action-btn reject" 
+                      title="Reject Record"
+                    >
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </template>
+
                   <a 
                     v-if="record.evidence_url" 
                     :href="record.evidence_url" 
@@ -372,7 +398,7 @@
                     title="View Evidence"
                   >
                     <i class="bi bi-file-earmark-check"></i>
-                    <span>View</span>
+                    <!-- <span>View</span> -->
                   </a>
                   <button 
                     @click="confirmDeleteAcademicRecord(record.record_id)" 
@@ -590,6 +616,7 @@ const {
   getAcademicProgress, 
   deletePayment, 
   deleteAcademicRecord,
+  updateAcademicRecord,
   subscribeToStudentUpdates 
 } = useSupabaseStudents()
 
@@ -663,11 +690,17 @@ const loadStudent = async () => {
 
       // Set up real-time sync for this student
       if (!realtimeSubscription) {
-        realtimeSubscription = subscribeToStudentUpdates(id, (table, payload) => {
+        realtimeSubscription = subscribeToStudentUpdates(id, async (table, payload) => {
           console.log(`[Admin] Real-time update from ${table}:`, payload)
           // Refresh all data to ensure absolute sync
-          getStudent(id).then(({ data }) => { if (data) student.value = data })
-          getAcademicProgress(id).then(({ data }) => { academicProgress.value = data || [] })
+          const { data: stuData } = await getStudent(id)
+          if (stuData) student.value = stuData
+          
+          const { data: progData } = await getAcademicProgress(id)
+          academicProgress.value = progData || []
+          
+          // Re-render chart to reflect new verification statuses or GPAs
+          await renderAcademicChart()
         })
       }
     } else {
@@ -727,23 +760,22 @@ const renderAcademicChart = async () => {
   // Other     → Purple  (#6B59FF  light / #8475f8 dark)
   const primaryHex = isDark ? '#8475f850' : '#6B59FF50'
 
-  const backgroundColors = gpas.map(gpa => {
-    if (gpa === null) return isDark ? 'rgba(156,163,175,0.30)' : 'rgba(156,163,175,0.20)'
-    if (gpa >= 4.5)  return 'rgba(3,138,82,0.22)'
-    if (gpa >= 4.0)  return 'rgba(0,194,255,0.18)'
-    if (gpa >= 3.5)  return 'rgba(255,153,0,0.20)'
-    const r = parseInt(primaryHex.slice(1,3),16)
-    const g = parseInt(primaryHex.slice(3,5),16)
-    const b = parseInt(primaryHex.slice(5,7),16)
-    return `rgba(${r},${g},${b},0.22)`
+  const backgroundColors = academicProgress.value.map(r => {
+    if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.1)' : 'rgba(156, 163, 175, 0.05)'
+    if (r.verification_status === 'rejected') return 'rgba(239, 68, 68, 0.2)'
+    if (r.verification_status === 'pending') return 'rgba(245, 158, 11, 0.2)'
+    
+    // Verified Performance
+    if (r.gpa >= 4.0) return 'rgba(34, 197, 94, 0.3)'
+    return isDark ? 'rgba(107, 89, 255, 0.3)' : 'rgba(107, 89, 255, 0.2)'
   })
 
-  const borderColors = gpas.map(gpa => {
-    if (gpa === null) return isDark ? 'rgba(156,163,175,0.4)' : 'rgba(156,163,175,0.5)'
-    if (gpa >= 4.5)  return '#038a5226'
-    if (gpa >= 4.0)  return '#00c2ff26'
-    if (gpa >= 3.5)  return '#ff990026'
-    return primaryHex
+  const borderColors = academicProgress.value.map(r => {
+    if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(156, 163, 175, 0.1)'
+    if (r.verification_status === 'rejected') return '#ef4444'
+    if (r.verification_status === 'pending') return '#f59e0b'
+    if (r.gpa >= 4.0) return '#22c55e'
+    return '#6B59FF'
   })
 
   chartInstance.value = new Chart(ctx, {
@@ -952,6 +984,26 @@ const confirmDeletePayment = async (paymentId) => {
   } catch (err) {
     console.error('Delete payment error:', err)
     alert('Failed to delete payment: ' + (err.message || 'Unknown error'))
+  }
+}
+
+const updateGPAStatus = async (recordId, newStatus) => {
+  const confirmMsg = newStatus === 'verified' 
+    ? 'Are you sure you want to verify this academic record?' 
+    : 'Are you sure you want to reject this academic record?'
+  
+  if (!confirm(confirmMsg)) return
+  
+  try {
+    const { error } = await updateAcademicRecord(recordId, { status: newStatus })
+    if (error) throw error
+    
+    // Refresh academic progress to update chart and list
+    const { data: progress } = await getAcademicProgress(student.value.id)
+    academicProgress.value = progress || []
+  } catch (err) {
+    console.error('Update academic record error:', err)
+    alert(`Failed to ${newStatus} record: ` + (err.message || 'Unknown error'))
   }
 }
 
@@ -2411,6 +2463,79 @@ onMounted(() => {
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
   border-left: 4px solid var(--color-primary);
+}
+
+/* Record Item & Status Badges */
+.record-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 1rem !important;
+  background: var(--bg-primary) !important;
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-primary) !important;
+  margin-bottom: 0.75rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.record-item:hover {
+  transform: translateX(4px) !important;
+  background: var(--surface) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.status-badge-sm {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.status-badge-sm.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status-badge-sm.verified {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-badge-sm.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.record-action-btn.approve {
+  color: #22c55e !important;
+  background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.record-action-btn.approve:hover {
+  background: #22c55e !important;
+  color: white !important;
+}
+
+.record-action-btn.reject {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.record-action-btn.reject:hover {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.record-gpa-val {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.record-gpa-val strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
 }
 
 .progress-header {

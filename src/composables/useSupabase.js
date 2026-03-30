@@ -415,15 +415,19 @@ export const useSupabaseStudents = () => {
       const idx = mockStudents.findIndex(s => s.id === id)
       if (idx === -1) return { data: null, error: { message: 'Student not found' } }
       mockStudents[idx] = { ...mockStudents[idx], ...updates, updated_at: new Date().toISOString() }
-      return { data: [mockStudents[idx]], error: null }
+      return { data: mockStudents[idx], error: null }
     }
     try {
-      const { data, error } = await supabase.from('students').update(updates).eq('id', id).select()
-      if (error) throw error
-      return data
+      const { data, error } = await supabase
+        .from('students')
+        .update(updates)
+        .eq('id', id)
+        .select()
+      if (error) return { data: null, error }
+      return { data: data?.[0] || null, error: null }
     } catch (err) {
       console.error('updateStudent error:', err)
-      throw err
+      return { data: null, error: { message: err.message || 'Unable to update student.' } }
     }
   }
 
@@ -475,9 +479,20 @@ export const useSupabaseStudents = () => {
   }
 
   const createAcademicRecord = async (record) => {
+    // Build a clean payload with status defaulting to 'pending'
+    const payload = {
+      student_id: record.student_id,
+      semester: record.semester,
+      session: record.session,
+      gpa: record.gpa,
+      semester_number: record.semester_number,
+      evidence_url: record.evidence_url || null,
+      status: record.status || 'pending'
+    }
+
     if (isMock) {
-      const newRecord = { id: `a-${Date.now()}`, ...record, created_at: new Date().toISOString() }
-      const student = mockStudents.find(s => s.id === record.student_id)
+      const newRecord = { id: `a-${Date.now()}`, ...payload, created_at: new Date().toISOString() }
+      const student = mockStudents.find(s => s.id === payload.student_id)
       if (student) {
         if (!student.academic_records) student.academic_records = []
         student.academic_records.unshift(newRecord)
@@ -485,7 +500,7 @@ export const useSupabaseStudents = () => {
       return { data: newRecord, error: null }
     }
     try {
-      const { data, error } = await supabase.from('academic_records').insert([record]).select().single()
+      const { data, error } = await supabase.from('academic_records').insert([payload]).select().single()
       return { data, error }
     } catch (err) {
       return { data: null, error: { message: err.message || 'Unable to record GPA.' } }
@@ -525,13 +540,52 @@ export const useSupabaseStudents = () => {
     }
     
     try {
-      const { data, error } = await supabase
-        .from('student_academic_progress')
-        .select('*')
+      // 1. Fetch the student first to know their course_duration
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('course_duration')
         .eq('id', studentId)
+        .single()
+      
+      if (studentError || !student) throw studentError || new Error('Student not found')
+      
+      // 2. Fetch existing academic records
+      const { data: records, error: recordsError } = await supabase
+        .from('academic_records')
+        .select('*')
+        .eq('student_id', studentId)
         .order('semester_number', { ascending: true })
       
-      return { data: data || [], error }
+      if (recordsError) throw recordsError
+
+      // 3. Generate the full journey list
+      const courseDuration = student.course_duration || 4
+      const totalSemesters = courseDuration * 2
+      const fullJourney = []
+      
+      for (let i = 1; i <= totalSemesters; i++) {
+        const yearNum = Math.ceil(i / 2)
+        const semPos = i % 2 === 0 ? 2 : 1
+        const label = `Semester ${semPos} - Year ${yearNum}`
+        
+        // Find if we have a record for this semester
+        const recorded = records?.find(r => r.semester_number === i)
+        
+        fullJourney.push({
+          semester_number: i,
+          expected_semester_label: label,
+          gpa: recorded?.gpa || null,
+          session: recorded?.session || null,
+          semester: recorded?.semester || null,
+          evidence_url: recorded?.evidence_url || null,
+          record_id: recorded?.id || null,
+          status: recorded ? 'Recorded' : 'Not Recorded',
+          verification_status: recorded?.status || null, // from our 'pending/verified/rejected' column
+          created_at: recorded?.created_at || null
+        })
+      }
+      
+      return { data: fullJourney, error: null }
     } catch (err) {
       return { data: [], error: { message: err.message || 'Unable to fetch academic progress.' } }
     }
@@ -568,6 +622,34 @@ export const useSupabaseStudents = () => {
       return { error }
     } catch (err) {
       return { error: { message: err.message || 'Unable to delete GPA record.' } }
+    }
+  }
+
+  const updateAcademicRecord = async (id, updates) => {
+    if (isMock) {
+      mockStudents.forEach(s => {
+        if (s.academic_records) {
+          const record = s.academic_records.find(a => a.id === id)
+          if (record) Object.assign(record, updates)
+        }
+      })
+      return { data: updates, error: null }
+    }
+    try {
+      const { data, error } = await supabase
+        .from('academic_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        
+      if (error) return { data: null, error }
+      
+      if (!data || data.length === 0) {
+        return { data: null, error: { message: 'Update failed: Record access denied by database security rules (RLS).' } }
+      }
+      return { data: data[0], error: null }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Unable to update academic record.' } }
     }
   }
 
@@ -614,6 +696,7 @@ export const useSupabaseStudents = () => {
     getAcademicProgress,
     deletePayment,
     deleteAcademicRecord,
+    updateAcademicRecord,
     subscribeToStudentUpdates
   }
 }

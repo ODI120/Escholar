@@ -218,7 +218,7 @@
   font-size: 0.95rem;
   font-weight: 500;
 }
-
+  
 @media (max-width: 768px) {
   .auth-card {
     padding: 2rem 1rem;

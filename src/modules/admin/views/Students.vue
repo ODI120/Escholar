@@ -667,8 +667,20 @@ watch([searchQuery, statusFilter, levelFilter, schoolFilter, genderFilter], () =
   currentPage.value = 1
 })
 
+let adminStudentsChannel = null
+
+const setupAdminStudentsRealtime = () => {
+  adminStudentsChannel = supabase
+    .channel('admin-students-updates')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => loadStudents())
+    .subscribe()
+}
+
+import { onUnmounted } from 'vue'
+
 onMounted(async () => {
   await loadStudents()
+  setupAdminStudentsRealtime()
   
   // Check if we need to auto-edit a student from query param
   if (route.query.edit) {
@@ -676,6 +688,12 @@ onMounted(async () => {
     if (studentToEdit) {
       editStudent(studentToEdit)
     }
+  }
+})
+
+onUnmounted(() => {
+  if (adminStudentsChannel) {
+    supabase.removeChannel(adminStudentsChannel)
   }
 })
 </script>

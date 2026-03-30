@@ -79,9 +79,9 @@
 
         <div class="header-right">
           <ThemeToggle inline style="margin-right: 0.5rem;" />
-          <button class="icon-button notification-btn" aria-label="Notifications">
+          <button class="icon-button notification-btn" aria-label="Notifications" @click="toggleNotifications">
              <i class="bi bi-bell"></i>
-             <span class="notification-badge"></span>
+             <span v-if="pendingRecords.length > 0" class="notification-badge">{{ pendingRecords.length }}</span>
           </button>
 
           <div class="profile-dropdown-wrapper" ref="profileDropdownRef">
@@ -113,6 +113,61 @@
         </div>
       </header>
 
+      <!-- Notification Slide-in Panel -->
+      <Transition name="slide-panel">
+        <div v-if="notificationsOpen" class="notif-panel-backdrop" @click.self="notificationsOpen = false">
+          <div class="notif-panel">
+            <div class="notif-panel-header">
+              <div class="notif-title-row">
+                <i class="bi bi-bell-fill"></i>
+                <h3>Pending Verifications</h3>
+              </div>
+              <button class="notif-close" @click="notificationsOpen = false">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div class="notif-panel-body">
+              <div v-if="notifLoading" class="notif-loading">
+                <div class="notif-spinner"></div>
+                <span>Loading records...</span>
+              </div>
+
+              <div v-else-if="pendingRecords.length === 0" class="notif-empty">
+                <i class="bi bi-check-circle"></i>
+                <p>All caught up! No pending records.</p>
+              </div>
+
+              <div v-else class="notif-list">
+                <div v-for="record in pendingRecords" :key="record.id" class="notif-item">
+                  <div class="notif-item-top">
+                    <router-link :to="`/students/${record.student_id}`" class="notif-student-name" @click="notificationsOpen = false">
+                      {{ record.student_name || 'Student' }}
+                    </router-link>
+                    <span class="notif-time">{{ formatTimeAgo(record.created_at) }}</span>
+                  </div>
+                  <div class="notif-item-detail">
+                    <span class="notif-semester">{{ record.semester_label }}</span>
+                    <span class="notif-gpa">GPA: <strong>{{ record.gpa }}</strong></span>
+                  </div>
+                  <div class="notif-item-actions">
+                    <a v-if="record.evidence_url" :href="record.evidence_url" target="_blank" class="notif-act-btn evidence" title="View Evidence">
+                      <i class="bi bi-file-earmark-check"></i>
+                    </a>
+                    <button class="notif-act-btn approve" title="Approve" @click="handleApprove(record)">
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button class="notif-act-btn reject" title="Reject" @click="handleReject(record)">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <!-- Page Content Slot -->
       <main class="content-scrollable">
         <div class="content-container">
@@ -126,19 +181,148 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useSupabaseAuth } from '../composables/useSupabase.js'
+import { useSupabaseAuth, supabase } from '../composables/useSupabase.js'
+import { useSupabaseStudents } from '../composables/useSupabase.js'
 import logo from '../assets/logo.png'
 import ThemeToggle from '../components/ThemeToggle.vue'
 
 const router = useRouter()
 const route = useRoute()
 const { signOut, getCurrentUser } = useSupabaseAuth()
+const { updateAcademicRecord } = useSupabaseStudents()
 
 // Responsive logic state
 const sidebarCollapsed = ref(false)
 const mobileOpen = ref(false)
 const dropdownOpen = ref(false)
 const profileDropdownRef = ref(null)
+
+// Notification panel state
+const notificationsOpen = ref(false)
+const notifLoading = ref(false)
+const pendingRecords = ref([])
+let notifChannel = null
+
+const toggleNotifications = async () => {
+  notificationsOpen.value = !notificationsOpen.value
+  if (notificationsOpen.value) {
+    await fetchPendingRecords()
+  }
+}
+
+const fetchPendingRecords = async () => {
+  notifLoading.value = true
+  try {
+    // Try the join query first
+    let records = []
+    const { data, error } = await supabase
+      .from('academic_records')
+      .select('id, student_id, semester_number, semester, gpa, evidence_url, created_at, students(full_name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      // Fallback: fetch without join if FK relationship isn't set up
+      console.warn('Join query failed, trying fallback:', error.message)
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('academic_records')
+        .select('id, student_id, semester_number, semester, gpa, evidence_url, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (fallbackError) throw fallbackError
+      records = fallbackData || []
+
+      // Fetch student names separately
+      const studentIds = [...new Set(records.map(r => r.student_id))]
+      if (studentIds.length > 0) {
+        const { data: students } = await supabase
+          .from('students')
+          .select('id, full_name')
+          .in('id', studentIds)
+        const nameMap = {}
+        ;(students || []).forEach(s => { nameMap[s.id] = s.full_name })
+        records = records.map(r => ({ ...r, _student_name: nameMap[r.student_id] || 'Unknown Student' }))
+      }
+    } else {
+      records = data || []
+    }
+
+    pendingRecords.value = records.map(r => {
+      const semPos = r.semester_number % 2 === 0 ? 2 : 1
+      const yearNum = Math.ceil(r.semester_number / 2)
+      return {
+        ...r,
+        student_name: r.students?.full_name || r._student_name || 'Unknown Student',
+        semester_label: `Semester ${semPos} - Year ${yearNum}`
+      }
+    })
+  } catch (err) {
+    console.error('Error fetching pending records:', err)
+  } finally {
+    notifLoading.value = false
+  }
+}
+
+// Real-time subscription for new academic records
+const setupNotifRealtime = () => {
+  notifChannel = supabase
+    .channel('admin-pending-records')
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'academic_records' },
+      (payload) => {
+        console.log('[Admin] New academic record submitted:', payload)
+        // Re-fetch to get the student name and full data
+        fetchPendingRecords()
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'academic_records' },
+      (payload) => {
+        // If a record was approved/rejected, refresh the list
+        if (payload.new?.status !== 'pending') {
+          pendingRecords.value = pendingRecords.value.filter(r => r.id !== payload.new.id)
+        }
+      }
+    )
+    .subscribe()
+}
+
+const handleApprove = async (record) => {
+  try {
+    const { error } = await updateAcademicRecord(record.id, { status: 'verified' })
+    if (error) throw error
+    pendingRecords.value = pendingRecords.value.filter(r => r.id !== record.id)
+  } catch (err) {
+    alert('Failed to approve: ' + (err.message || 'Unknown error'))
+  }
+}
+
+const handleReject = async (record) => {
+  try {
+    const { error } = await updateAcademicRecord(record.id, { status: 'rejected' })
+    if (error) throw error
+    pendingRecords.value = pendingRecords.value.filter(r => r.id !== record.id)
+  } catch (err) {
+    alert('Failed to reject: ' + (err.message || 'Unknown error'))
+  }
+}
+
+const formatTimeAgo = (dateStr) => {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
 
 // Admin info state
 const adminName = ref('Admin')
@@ -237,12 +421,20 @@ onMounted(async () => {
   if (window.innerWidth > 768 && window.innerWidth < 1280) {
     sidebarCollapsed.value = true
   }
+
+  // Pre-fetch pending count for badge and start real-time listener
+  fetchPendingRecords()
+  setupNotifRealtime()
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('resize', handleResize)
   document.body.style.overflow = ''
+  // Clean up real-time subscription
+  if (notifChannel) {
+    supabase.removeChannel(notifChannel)
+  }
 })
 </script>
 
@@ -547,13 +739,26 @@ button {
 
 .notification-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: white;
   background-color: #ef4444;
-  border-radius: 50%;
+  border-radius: 9px;
   border: 2px solid var(--surface, #ffffff);
+  animation: badge-pulse 2s infinite;
+}
+
+@keyframes badge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
 /* Profile Dropdown */
@@ -819,5 +1024,261 @@ button {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* =========================================
+   Notification Slide-in Panel
+   ========================================= */
+.notif-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notif-panel {
+  width: 400px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--surface, #fff);
+  border-left: 1px solid var(--border-primary, #e5e7eb);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.notif-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-primary, #e5e7eb);
+  background: var(--bg-primary, #f9fafb);
+  flex-shrink: 0;
+}
+
+.notif-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.notif-title-row i {
+  font-size: 1.15rem;
+  color: var(--color-primary);
+}
+
+.notif-title-row h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notif-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.notif-close:hover {
+  background: var(--surface-hover, #f3f4f6);
+  color: var(--text-primary);
+}
+
+.notif-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+
+.notif-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 0;
+  color: var(--text-muted);
+}
+
+.notif-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border-primary);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.notif-empty i {
+  font-size: 2.5rem;
+  color: #22c55e;
+  opacity: 0.6;
+}
+
+.notif-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.notif-item {
+  padding: 1rem;
+  background: var(--bg-primary, #f9fafb);
+  border: 1px solid var(--border-primary, #e5e7eb);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.notif-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(107, 89, 255, 0.08);
+}
+
+.notif-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.notif-student-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-primary) !important;
+  text-decoration: none !important;
+}
+
+.notif-student-name:hover {
+  text-decoration: underline !important;
+}
+
+.notif-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.notif-item-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.notif-semester {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.notif-gpa {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.notif-gpa strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.notif-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.notif-act-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.notif-act-btn.evidence {
+  color: var(--color-primary);
+  background: rgba(107, 89, 255, 0.08);
+}
+.notif-act-btn.evidence:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.notif-act-btn.approve {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+.notif-act-btn.approve:hover {
+  background: #22c55e;
+  color: white;
+}
+
+.notif-act-btn.reject {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.notif-act-btn.reject:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Slide panel transitions */
+.slide-panel-enter-active {
+  transition: opacity 0.3s ease;
+}
+.slide-panel-leave-active {
+  transition: opacity 0.2s ease;
+}
+.slide-panel-enter-from,
+.slide-panel-leave-to {
+  opacity: 0;
+}
+.slide-panel-leave-to .notif-panel {
+  transform: translateX(100%);
+}
+
+@media (max-width: 480px) {
+  .notif-panel {
+    width: 100vw;
+  }
 }
 </style>
