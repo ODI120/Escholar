@@ -878,7 +878,11 @@ export const useSupabaseAdmins = () => {
 
       if (error) return { data: null, error }
       if (!existing) return { data: null, error: { message: 'Unauthorized: You do not have administrator privileges.' } }
-      if (existing.status !== 'active') return { data: null, error: { message: 'Account disabled. Please contact system owner.' } }
+      
+      // Only block if explicitly set to something else (e.g., 'inactive')
+      if (existing.status && existing.status.toLowerCase() !== 'active') {
+        return { data: null, error: { message: 'Unauthorized: Account status is ' + existing.status + '. Please contact system owner.' } }
+      }
 
       return { data: existing, error: null }
     } catch (err) {
