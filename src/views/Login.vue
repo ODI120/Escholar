@@ -89,7 +89,7 @@ import { supabase, useSupabaseAuth, useSupabaseAdmins } from '../composables/use
 
 const router = useRouter()
 const { signIn, getCurrentUser } = useSupabaseAuth()
-const { ensureAdminForUser } = useSupabaseAdmins()
+const { verifyAdminUser } = useSupabaseAdmins()
 
 const form = ref({
   email: '',
@@ -112,12 +112,23 @@ const handleLogin = async () => {
       try {
         const { data: userData } = await getCurrentUser()
         if (userData?.user) {
-          await ensureAdminForUser(userData.user)
+          const { data: adminData, error: adminError } = await verifyAdminUser(userData.user)
+          
+          if (adminError) {
+            // UNAUTHORIZED: Sign out immediately
+            await supabase.auth.signOut()
+            localStorage.removeItem('supabase.auth.token')
+            localStorage.removeItem('user_role')
+            throw new Error(adminError.message || 'Unauthorized access detected.')
+          }
+
+          // SUCCESS: Authorized Admin
+          localStorage.setItem('user_role', 'admin')
+          router.push('/dashboard')
         }
       } catch (e) {
-        console.warn('Failed to sync admin for user:', e)
+        error.value = e.message || 'Administrative verification failed.'
       }
-      router.push('/dashboard')
     }
   } catch (err) {
     error.value = 'An unexpected error occurred'

@@ -860,22 +860,13 @@ export const useSupabaseAdmins = () => {
     }
   }
 
-  const ensureAdminForUser = async (user) => {
-    if (!user?.email) return { data: null, error: null }
+  const verifyAdminUser = async (user) => {
+    if (!user?.email) return { data: null, error: { message: 'Invalid user data.' } }
 
     if (isMock) {
       const existing = mockAdmins.find(a => a.email === user.email)
       if (existing) return { data: existing, error: null }
-      const record = {
-        id: String(Date.now()),
-        name: user.user_metadata?.full_name || user.email.split('@')[0],
-        email: user.email,
-        role: 'super_admin',
-        status: 'active',
-        last_active: 'Today'
-      }
-      mockAdmins.unshift(record)
-      return { data: record, error: null }
+      return { data: null, error: { message: 'Administrative access denied.' } }
     }
 
     try {
@@ -885,33 +876,18 @@ export const useSupabaseAdmins = () => {
         .eq('email', user.email)
         .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
-        return { data: null, error }
-      }
+      if (error) return { data: null, error }
+      if (!existing) return { data: null, error: { message: 'Unauthorized: You do not have administrator privileges.' } }
+      if (existing.status !== 'active') return { data: null, error: { message: 'Account disabled. Please contact system owner.' } }
 
-      if (existing) return { data: existing, error: null }
-
-      const payload = {
-        user_id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || user.email.split('@')[0],
-        role: 'super_admin'
-      }
-
-      const { data: created, error: createError } = await supabase
-        .from('admins')
-        .insert([payload])
-        .select()
-        .single()
-
-      return { data: created, error: createError }
+      return { data: existing, error: null }
     } catch (err) {
       return {
         data: null,
-        error: { message: err.message || 'Unable to sync admin record.' }
+        error: { message: err.message || 'Unable to verify administrative permissions.' }
       }
     }
   }
 
-  return { getAdmins, createAdmin, updateAdmin, ensureAdminForUser }
+  return { getAdmins, createAdmin, updateAdmin, verifyAdminUser }
 }
