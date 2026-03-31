@@ -16,43 +16,96 @@
         <p class="auth-subtitle staggered-2">Beneficiary Access Terminal</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="elegant-form">
-        <!-- Floating Label Inputs -->
-        <div class="floating-group staggered-3">
-          <input
-            type="email"
-            id="email"
-            v-model="form.email"
-            required
-            placeholder=" "
-            class="floating-input"
-            autocomplete="email"
-          />
-          <label class="floating-label" for="email">
-            <i class="bi bi-envelope-fill icon-left"></i> Email Address
-          </label>
-        </div>
-
-        <div class="floating-group staggered-4">
-          <input
-            type="password"
-            id="password"
-            v-model="form.password"
-            required
-            placeholder=" "
-            class="floating-input"
-            autocomplete="current-password"
-          />
-          <label class="floating-label" for="password">
-            <i class="bi bi-key-fill icon-left"></i> Password
-          </label>
-          <div class="password-hint">
-            <small>(Default password is 000000)</small>
+      <form @submit.prevent="resetSent ? null : (step === 1 ? handleEmailCheck() : handleLogin())" class="elegant-form">
+        <!-- Transition for Steps -->
+        <Transition name="auth-slide" mode="out-in">
+          <!-- Step 3: Reset Success (Checked first so it takes priority) -->
+          <div v-if="resetSent" key="reset-success" class="auth-step-wrapper text-center">
+            <div class="success-icon glow mb-4 staggered-1">
+              <i class="bi bi-envelope-check-fill"></i>
+            </div>
+            <h3 class="student-name staggered-2">Check your email</h3>
+            <p class="auth-subtitle staggered-3 mb-4">
+              We've sent a password reset link to <br>
+              <strong>{{ studentData?.email }}</strong>
+            </p>
+            <button type="button" @click="resetSent = false; step = 1" class="btn-premium staggered-4">
+              Return to Login
+            </button>
           </div>
-        </div>
+
+          <!-- Step 1: Email Verification -->
+          <div v-else-if="step === 1" key="email-step">
+            <div class="floating-group staggered-3">
+              <input
+                type="email"
+                id="email"
+                v-model="form.email"
+                required
+                placeholder=" "
+                class="floating-input"
+                autocomplete="email"
+              />
+              <label class="floating-label" for="email">
+                <i class="bi bi-envelope-fill icon-left"></i> Email Address
+              </label>
+            </div>
+            <div class="field-hint staggered-4">
+              <small>Verify your beneficiary account to proceed</small>
+            </div>
+          </div>
+
+          <!-- Step 2: Password Entry -->
+          <div v-else key="password-step" class="auth-step-wrapper">
+            <!-- Personalized Greeting -->
+            <div class="user-welcome staggered-1">
+              <p class="greeting-pre">Welcome back,</p>
+              <h3 class="student-name">{{ studentData?.full_name?.split(' ')[0] }}!</h3>
+              <p class="greeting-email">{{ studentData?.email }}</p>
+            </div>
+
+            <div class="floating-group staggered-2">
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                id="password"
+                v-model="form.password"
+                required
+                placeholder=" "
+                class="floating-input"
+                autocomplete="current-password"
+                autofocus
+              />
+              <label class="floating-label" for="password">
+                <i class="bi bi-key-fill icon-left"></i> Password
+              </label>
+              <button 
+                type="button" 
+                class="password-preview-btn" 
+                @click="showPassword = !showPassword"
+                aria-label="Toggle password visibility"
+              >
+                <i :class="showPassword ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'"></i>
+              </button>
+            </div>
+
+            <div class="password-hint staggered-3">
+              <button type="button" @click="step = 1" class="secondary-auth-btn">
+                <i class="bi bi-arrow-left"></i> Not you? Change email
+              </button>
+              <button type="button" @click="handleForgotPassword" class="forgot-password-link">
+                Forgot Password?
+              </button>
+            </div>
+            
+            <p class="micro-hint staggered-4">(Default: 000000)</p>
+          </div>
+        </Transition>
 
         <button type="submit" class="btn-premium btn-pulse staggered-5" :class="{ 'is-loading': loading }" :disabled="loading">
-          <span v-if="!loading" class="btn-text">Log In <i class="bi bi-arrow-right icon-right"></i></span>
+          <span v-if="!loading" class="btn-text">
+            {{ step === 1 ? 'Continue' : 'Sign In' }}
+            <i class="bi" :class="step === 1 ? 'bi-arrow-right icon-right' : 'bi-shield-lock-fill icon-right'"></i>
+          </span>
           <div class="spinner-grow spinner-grow-sm text-light" role="status" v-if="loading">
             <span class="visually-hidden">Loading...</span>
           </div>
@@ -74,7 +127,7 @@
 <script setup>
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import { supabase } from '../../../composables/useSupabase.js'
+  import { supabase, useSupabaseAuth } from '../../../composables/useSupabase.js'
 
   const router = useRouter()
   const form = ref({
@@ -83,7 +136,59 @@
   })
 
   const loading = ref(false)
+  const step = ref(1) // 1: Email, 2: Password
+  const showPassword = ref(false)
+  const studentEmailVerified = ref(false)
+  const studentData = ref(null)
+  const resetSent = ref(false)
   const error = ref('')
+
+  const handleEmailCheck = async () => {
+    if (!form.value.email) return
+
+    loading.value = true
+    error.value = ''
+
+    try {
+      // 1. Verify if the email exists in the `students` table
+      const { data: student, error: profileError } = await supabase
+        .from('students')
+        .select('full_name, email')
+        .eq('email', form.value.email.trim())
+        .single()
+
+      if (profileError || !student) {
+        throw new Error('No account found with this email addresses.')
+      }
+
+      studentData.value = student
+      step.value = 2
+    } catch (err) {
+      error.value = err.message || 'Verification failed.'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!studentData.value?.email) return
+    
+    loading.value = true
+    error.value = ''
+    
+    try {
+      const { resetPassword } = useSupabaseAuth()
+      const { error: resetError } = await resetPassword(studentData.value.email)
+      
+      if (resetError) throw resetError
+      
+      resetSent.value = true
+    } catch (err) {
+      error.value = 'Failed to send reset email: ' + err.message
+    } finally {
+      loading.value = false
+    }
+  }
 
   const handleLogin = async () => {
     loading.value = true
@@ -97,7 +202,8 @@
       })
 
       if (authError) {
-        error.value = 'Incorrect email or password. Please try again.'
+        // More specific error message for step 2
+        error.value = 'Incorrect password. Please try again.'
         return
       }
 
@@ -163,18 +269,18 @@
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 420px;
+  max-width: 440px; /* Slightly wider for new flow */
   margin: 2rem;
   padding: 3.5rem 2.5rem;
-  border-radius: 28px;
-  background: rgba(14, 18, 36, 0.45);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  background: rgba(10, 14, 28, 0.295); /* Darker for better contrast */
+  backdrop-filter: blur(45px);
+  -webkit-backdrop-filter: blur(45px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.6), 
-    inset 0 1px 1px rgba(255, 255, 255, 0.15),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+    0 25px 60px -12px rgba(0, 0, 0, 0.7), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.4);
 }
 
 
@@ -214,9 +320,10 @@
 
 .auth-subtitle {
   margin: 0.25rem 0 0;
-  color: rgba(255, 255, 255, 0.6);
+  color: #a0aec0; /* Bolder grey for better visibility */
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600; /* Increased weight for micro-text contrast */
+  letter-spacing: 0.5px;
 }
   
 @media (max-width: 768px) {
@@ -268,9 +375,9 @@
   left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.95rem;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.918); /* Higher contrast */
+  font-size: 1rem;
+  font-weight: 600; /* Bolder contrast */
   pointer-events: none;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -278,23 +385,151 @@
   gap: 0.4rem;
 }
 
-.password-hint {
+.password-preview-btn {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.808);
+  cursor: pointer;
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.password-preview-btn:hover {
+  color: #fff;
+  transform: translateY(-50%) scale(1.15);
+}
+
+.forgot-password-link {
+  background: none;
+  border: none;
+  color: #b0a8f7;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.forgot-password-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.micro-hint {
   text-align: right;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
+  color: #a0aec0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(139, 125, 255, 0.15);
+  border: 1px solid rgba(139, 125, 255, 0.3);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  font-size: 2.5rem;
+  color: #b0a8f7;
+}
+
+.field-hint {
+  margin-top: 0.75rem;
+  text-align: left;
+  padding-left: 0.25rem;
+}
+
+.field-hint small {
+  color: #b0a8f7;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  opacity: 0.9;
+}
+
+.password-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+}
+
+.secondary-auth-btn {
+  background: none;
+  border: none;
+  color: #a0aec0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.2s;
+}
+
+.secondary-auth-btn:hover {
+  color: #fff;
 }
 
 .password-hint small {
-  color: rgba(107, 89, 255, 0.85);
-  font-size: 0.75rem;
-  font-weight: 600;
+  color: #b0a8f7; /* Higher contrast purple */
+  font-size: 0.82rem; /* Larger micro-text */
+  font-weight: 500; /* Bolder contrast */
+}
+
+@media (max-width: 320px) {
+  .password-hint {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 
 /* Floating label magic */
 .floating-input:focus ~ .floating-label,
 .floating-input:not(:placeholder-shown) ~ .floating-label {
   top: 0.8rem;
-  font-size: 0.75rem;
-  color: rgba(107, 89, 255, 0.9);
+  font-size: 0.8rem; /* Larger micro-text contrast */
+  color: #b0a8f7; /* Solid color for visibility */
+  font-weight: 700;
+}
+
+.user-welcome {
+  text-align: center;
+  margin-bottom: 2.25rem;
+}
+
+.greeting-pre {
+  display: block;
+  font-size: 0.95rem;
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.student-name {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0.3rem 0;
+  letter-spacing: -0.01em;
+}
+
+.greeting-email {
+  font-size: 0.85rem;
+  color: #b0a8f7;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .icon-left {
@@ -387,14 +622,6 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Micro-animations Staggered Loading */
-.staggered-1 { animation: fadeSlideUp 0.8s ease 0.1s both; }
-.staggered-2 { animation: fadeSlideUp 0.8s ease 0.2s both; }
-.staggered-3 { animation: fadeSlideUp 0.8s ease 0.3s both; }
-.staggered-4 { animation: fadeSlideUp 0.8s ease 0.4s both; }
-.staggered-5 { animation: fadeSlideUp 0.8s ease 0.5s both; }
-.staggered-6 { animation: fadeSlideUp 0.8s ease 0.6s both; }
-
 @keyframes fadeSlideUp {
   0% {
     opacity: 0;
@@ -404,5 +631,21 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Authentication Flow Transitions */
+.auth-slide-enter-active,
+.auth-slide-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-slide-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.auth-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
 }
 </style>

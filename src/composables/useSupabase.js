@@ -89,6 +89,18 @@ export const useSupabaseAuth = () => {
     }
   }
 
+  const resetPassword = async (email) => {
+    if (isMock) return { data: {}, error: null }
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/student/reset-password`,
+      })
+      return { data, error }
+    } catch (err) {
+      return { data: null, error: { message: err.message || 'Unable to send reset email.' } }
+    }
+  }
+
   const getCurrentUser = () => {
     if (isMock) return { data: { user: null }, error: null }
     try {
@@ -108,7 +120,7 @@ export const useSupabaseAuth = () => {
     })
   }
 
-  return { signUp, signIn, signOut, getCurrentUser, updatePassword }
+  return { signUp, signIn, signOut, getCurrentUser, updatePassword, resetPassword }
 }
 
 // Students helpers
