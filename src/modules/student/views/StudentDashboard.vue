@@ -308,7 +308,7 @@
                     <tbody>
                       <tr v-for="payment in studentData.payments" :key="payment.id">
                         <td data-label="Date">{{ formatDate(payment.date) }}</td>
-                        <td data-label="Description" class="text-truncate" style="max-width: 200px;">{{ payment.description }}</td>
+                        <td data-label="Description" class="text-truncate" >{{ payment.description }}</td>
                         <td data-label="Amount" class="fw-bold">₦{{ formatCurrency(payment.amount) }}</td>
                         <td data-label="Status">
                           <span class="status-dot" :class="payment.status"></span>
@@ -406,12 +406,35 @@
                         <span>View</span>
                       </a>
                       <button
-                        @click="confirmDeleteAcademicRecord(record.record_id)"
+                        v-if="confirmingDeleteId !== record.record_id"
+                        type="button"
+                        @click.stop.prevent="confirmingDeleteId = record.record_id"
                         class="record-action-btn delete"
                         title="Delete Record"
                       >
                         <i class="bi bi-trash"></i>
+                        <span>Delete</span>
                       </button>
+                      <div v-else class="d-flex gap-2">
+                        <button
+                          type="button"
+                          @click.stop.prevent="confirmDeleteAcademicRecord(record.record_id)"
+                          class="record-action-btn delete"
+                          style="background: #ef4444; color: white;"
+                          title="Click to Confirm"
+                        >
+                          <i class="bi bi-exclamation-triangle"></i>
+                          <span>Confirm</span>
+                        </button>
+                        <button
+                          type="button"
+                          @click.stop.prevent="confirmingDeleteId = null"
+                          class="record-action-btn bg-secondary text-white border-0"
+                          title="Cancel"
+                        >
+                          <i class="bi bi-x"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -423,6 +446,23 @@
               <p class="empty-subtitle">You do not have any recorded grades for past semesters yet.</p>
             </div>
 
+            
+            <!-- CHANGE PASSWORD -->
+            <div class="detail-card financial-card mb-4">
+              <div class="card-head between">
+                <i class="bi bi-gear"></i>
+                <h3>Settings</h3>
+              </div>
+              <div class="fin-card-body">
+                <div class="setting-item">
+                  <button type="button" class="custom-btn custom-btn-primary w-100" @click="openPasswordModal">
+                    <i class="bi bi-shield-lock-fill me-2"></i>
+                    Change Password
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Audit Log -->
             <div class="detail-card">
               <div class="card-body mini-audit">
@@ -430,9 +470,9 @@
                 <p v-if="studentData.updated_at">Last updated {{ formatDate(studentData.updated_at) }}</p>
               </div>
             </div>
+            
           </div>
         </div>
-
       </div>
 
       <div v-else class="alert alert-danger mt-4">
@@ -441,6 +481,22 @@
       </div>
 
     </div>
+
+    <!-- Custom Toast Notification -->
+    <Transition name="toast-slide">
+      <div v-if="toast.show" class="custom-toast" :class="`toast-${toast.type}`">
+        <div class="toast-icon">
+          <i class="bi" :class="toast.type === 'error' ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill'"></i>
+        </div>
+        <div class="toast-content">
+          <strong class="toast-title">{{ toast.type === 'error' ? 'Error' : 'Success' }}</strong>
+          <p class="toast-message">{{ toast.message }}</p>
+        </div>
+        <button type="button" class="toast-close" @click="toast.show = false">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    </Transition>
 
     <!-- Record GPA Modal -->
     <Transition name="modal-fade">
@@ -509,6 +565,95 @@
       </div>
     </Transition>
     
+    <!-- Change Password Modal -->
+    <Transition name="modal-fade">
+      <div v-if="showPasswordModal" class="custom-modal-backdrop" @click.self="showPasswordModal = false">
+        <div class="custom-modal-wrapper" style="max-width: 500px;">
+          <div class="custom-modal-header">
+            <div class="header-titles">
+              <div class="header-icon" style="background: rgba(107, 89, 255, 0.1); color: var(--color-primary);">
+                <i class="bi bi-shield-lock-fill"></i>
+              </div>
+              <div class="title-group">
+                <h3 class="custom-modal-title">Change Password</h3>
+                <p class="custom-modal-subtitle">Secure your account by updating your password</p>
+              </div>
+            </div>
+            <button type="button" class="custom-close-btn" @click="showPasswordModal = false" :disabled="passwordUpdateLoading">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+
+          <form @submit.prevent="handleSecurePasswordChange" class="custom-modal-form">
+            <div class="custom-modal-body">
+              <div class="form-section mb-0">
+                <div class="custom-input-group full-width mb-3">
+                  <label class="custom-label">Current Password</label>
+                  <div class="password-input-wrapper">
+                    <input 
+                      :type="showCurrentPassword ? 'text' : 'password'" 
+                      v-model="passwordUpdateForm.currentPassword" 
+                      class="custom-input" 
+                      placeholder="Enter current password"
+                      required
+                    >
+                    <button type="button" class="password-toggle" @click="showCurrentPassword = !showCurrentPassword">
+                      <i :class="showCurrentPassword ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="custom-form-grid">
+                  <div class="custom-input-group">
+                    <label class="custom-label">New Password</label>
+                    <div class="password-input-wrapper">
+                      <input 
+                        :type="showNewPassword ? 'text' : 'password'" 
+                        v-model="passwordUpdateForm.newPassword" 
+                        class="custom-input" 
+                        placeholder="Min. 6 characters"
+                        required
+                      >
+                      <button type="button" class="password-toggle" @click="showNewPassword = !showNewPassword">
+                        <i :class="showNewPassword ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Confirm New Password</label>
+                    <div class="password-input-wrapper">
+                      <input 
+                        :type="showConfirmPassword ? 'text' : 'password'" 
+                        v-model="passwordUpdateForm.confirmPassword" 
+                        class="custom-input" 
+                        placeholder="Repeat new password"
+                        required
+                      >
+                      <button type="button" class="password-toggle" @click="showConfirmPassword = !showConfirmPassword">
+                        <i :class="showConfirmPassword ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-xs text-muted mt-3">
+                  <i class="bi bi-info-circle-fill me-1"></i>
+                  Note: For security, you'll need to re-verify your identity before updating.
+                </p>
+              </div>
+            </div>
+
+            <div class="custom-modal-footer">
+              <button type="button" class="custom-btn custom-btn-outline" @click="showPasswordModal = false" :disabled="passwordUpdateLoading">Cancel</button>
+              <button type="submit" class="custom-btn custom-btn-primary" :disabled="passwordUpdateLoading">
+                <span v-if="passwordUpdateLoading" class="loader-sm mr-2"></span>
+                <span v-else>Update Password</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Edit Profile Modal -->
     <Transition name="modal-fade">
       <div v-if="showEditModal" class="custom-modal-backdrop" @click.self="showEditModal = false">
@@ -530,13 +675,13 @@
 
           <form @submit.prevent="handleUpdateProfile" class="custom-modal-form">
             <div class="custom-modal-body">
-              <div class="edit-modal-layout-new" style="display: grid; grid-template-columns: 240px 1fr; gap: 2.5rem;">
+              <div class="edit-modal-layout-new">
                 <!-- Left: Avatar Upload -->
-                <div class="avatar-edit-col" style="display: flex; flex-direction: column; align-items: center; padding: 2rem; background: linear-gradient(135deg, rgba(107, 89, 255, 0.05) 0%, rgba(107, 89, 255, 0) 100%); border-radius: 20px;">
-                  <div class="profile-avatar big" style="width: 160px; height: 160px; font-size: 3.5rem; position: relative; border: 5px solid white; box-shadow: var(--shadow-xl); border-radius: 30px; overflow: hidden; background: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center;">
-                    <img v-if="profilePreview || studentData.profile_picture" :src="profilePreview || studentData.profile_picture" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                <div class="avatar-edit-col">
+                  <div class="profile-avatar big">
+                    <img v-if="profilePreview || studentData.profile_picture" :src="profilePreview || studentData.profile_picture" alt="Avatar">
                     <span v-else>{{ studentData.full_name?.charAt(0) }}</span>
-                    <label class="avatar-upload-overlay" style="position: absolute; bottom: 0; right: 0; left: 0; height: 40%; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; opacity: 1;">
+                    <label class="avatar-upload-overlay">
                       <i class="bi bi-camera-fill"></i>
                       <input type="file" @change="handleProfileImageUpload" accept="image/*" hidden>
                     </label>
@@ -617,19 +762,21 @@
         </div>
       </div>
     </Transition>
-  </StudentLayout>
+
+   </StudentLayout>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import StudentLayout from '../../../layouts/StudentLayout.vue'
-import { useSupabaseStudents } from '../../../composables/useSupabase.js'
+import { useSupabaseStudents, useSupabaseAuth } from '../../../composables/useSupabase.js'
 import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)
 
 const router = useRouter()
+const { signIn, updatePassword } = useSupabaseAuth()
 const { 
   getStudent, 
   getAcademicProgress, 
@@ -641,6 +788,31 @@ const {
   deleteAcademicRecord,
   subscribeToStudentUpdates 
 } = useSupabaseStudents()
+
+const confirmingDeleteId = ref(null)
+
+const showPasswordModal = ref(false)
+const passwordUpdateForm = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordUpdateLoading = ref(false)
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+
+
+const toast = ref({ show: false, message: '', type: 'success' })
+let toastTimer = null
+
+const showToast = (message, type = 'success') => {
+  toast.value = { show: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.show = false
+  }, 4500)
+}
 
 const studentData = ref(null)
 const academicProgress = ref([])
@@ -766,7 +938,7 @@ const handleAdmissionLetterUpload = async (event) => {
     })
     if (result.error) throw result.error
 
-    alert('Admission letter uploaded successfully!')
+    showToast('Admission letter uploaded successfully!', 'success')
     
     // Refresh local data
     const { data } = await getStudent(studentData.value.id)
@@ -776,7 +948,7 @@ const handleAdmissionLetterUpload = async (event) => {
     }
   } catch (err) {
     console.error('Error uploading admission letter:', err)
-    alert(err.message || 'Failed to upload admission letter. Please try again.')
+    showToast(err.message || 'Failed to upload admission letter. Please try again.', 'error')
   } finally {
     admissionLoading.value = false
     if (admissionFileInput.value) admissionFileInput.value.value = ''
@@ -804,7 +976,7 @@ const handleUpdateProfile = async () => {
     if (result.error) throw result.error
 
     showEditModal.value = false
-    alert('Profile updated successfully!')
+    showToast('Profile updated successfully!', 'success')
     
     // Refresh local data
     const { data } = await getStudent(studentData.value.id)
@@ -815,11 +987,62 @@ const handleUpdateProfile = async () => {
 
   } catch (err) {
     console.error('Error updating profile:', err)
-    alert(err.message || 'Failed to update profile. Please try again.')
+    showToast(err.message || 'Failed to update profile. Please try again.', 'error')
   } finally {
     editLoading.value = false
   }
 }
+
+const openPasswordModal = () => {
+  passwordUpdateForm.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  }
+  showPasswordModal.value = true
+}
+
+const handleSecurePasswordChange = async () => {
+  const { currentPassword, newPassword, confirmPassword } = passwordUpdateForm.value
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    showToast('Please fill in all password fields.', 'error')
+    return
+  }
+
+  if (newPassword.length < 6) {
+    showToast('New password must be at least 6 characters.', 'error')
+    return
+  }
+
+  if (newPassword !== confirmPassword) {
+    showToast('New passwords do not match.', 'error')
+    return
+  }
+
+  passwordUpdateLoading.value = true
+  try {
+    // 1. Verify Current Password by attempting re-authentication
+    const { error: verifyError } = await signIn(studentData.value.email, currentPassword)
+    
+    if (verifyError) {
+      throw new Error('Incorrect current password. Please try again.')
+    }
+
+    // 2. Update to new password
+    const { error: updateError } = await updatePassword(newPassword)
+    if (updateError) throw updateError
+
+    showToast('Password updated successfully!', 'success')
+    showPasswordModal.value = false
+  } catch (err) {
+    console.error('Password change error:', err)
+    showToast(err.message || 'Failed to update password.', 'error')
+  } finally {
+    passwordUpdateLoading.value = false
+  }
+}
+
 
 const openAcademicModal = () => {
   academicForm.value = { year: '', gpa: '', student_id: studentData.value?.id || '' }
@@ -873,32 +1096,39 @@ const submitAcademicRecord = async () => {
     showAcademicModal.value = false
 
     if ((payload.gpa ?? 0) >= 4.0) {
-      alert('Congratulations! You are eligible for the High Performance Incentive.')
+      showToast('Congratulations! You are eligible for the High Performance Incentive.', 'success')
+    } else {
+      showToast('Academic record saved successfully!', 'success')
     }
   } catch (err) {
     console.error('Error saving GPA record:', err)
     let msg = 'Failed to save record. Please try again.'
     if (err?.message && err.message.toLowerCase().includes('row-level security')) {
-      msg = 'Permission Error: New record violates database security policy. Please ensure you have run the RLS SQL fix in your Supabase dashboard.'
+      msg = 'Permission Error: Database security policy blocked this action.'
     } else if (err?.message) {
       msg = `Failed to save record: ${err.message}`
     }
-    alert(msg)
+    showToast(msg, 'error')
   } finally {
     academicLoading.value = false
   }
 }
 
 const confirmDeleteAcademicRecord = async (recordId) => {
-  if (!confirm('Are you sure you want to delete this academic record? This cannot be undone.')) return
+  console.log('Final confirmation clicked for record:', recordId);
   try {
     const { error } = await deleteAcademicRecord(recordId)
     if (error) throw error
+    
+    // Reset the confirmation button state
+    confirmingDeleteId.value = null
+    
+    // Refresh table
     const { data: progress } = await getAcademicProgress(studentData.value.id)
     academicProgress.value = progress || []
   } catch (err) {
     console.error('Delete academic record error:', err)
-    alert('Failed to delete record: ' + (err.message || 'Unknown error'))
+    showToast('Failed to delete record: ' + (err.message || 'Unknown error'), 'error')
   }
 }
 
@@ -930,10 +1160,10 @@ const renderAcademicChart = async () => {
 
   const borderColors = academicProgress.value.map(r => {
     if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(156, 163, 175, 0.1)'
-    if (r.verification_status === 'rejected') return '#ef4444'
-    if (r.verification_status === 'pending') return '#f59e0b'
-    if (r.gpa >= 4.0) return '#22c55e'
-    return '#6B59FF'
+    if (r.verification_status === 'rejected') return '#ef444465'
+    if (r.verification_status === 'pending') return '#f59e0b65'
+    if (r.gpa >= 4.0) return '#22c55e65'
+    return '#6B59FF65'
   })
 
   chartInstance.value = new Chart(ctx, {
@@ -945,7 +1175,7 @@ const renderAcademicChart = async () => {
         data: gpas,
         backgroundColor: backgroundColors,
         borderColor: borderColors,
-        borderWidth: 2,
+        borderWidth: 1,
         borderRadius: 6,
         borderSkipped: false,
         barThickness: 'flex',
@@ -1062,6 +1292,7 @@ onUnmounted(() => {
 
 .hero-bg {
   height: 140px;
+  background-image: url('/login-bg.png');
   background-size: cover;
   background-position: center;
   position: relative;
@@ -1151,6 +1382,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.4rem;
 }
+
 .edit-profile button{
   
   border: 1px solid var(--border-primary);
@@ -1383,17 +1615,17 @@ onUnmounted(() => {
   .edit-profile button{
     display: none;
   }
+  .academic-subtitle i{
+    display: none;
+  }
 
-  /* .top-nav-container{
-    padding: 0 1rem;
-  } */
 }
 
 /* Modal Layout Overrides for Student Dashboard */
 .edit-modal-layout-new {
   display: grid;
   grid-template-columns: 240px 1fr;
-  gap: 2.5rem;
+  gap: 1rem;
 }
 
 .avatar-edit-col {
@@ -1410,7 +1642,7 @@ onUnmounted(() => {
   height: 160px;
   font-size: 3.5rem;
   position: relative;
-  border: 5px solid white;
+  border: 5px solid rgba(255, 255, 255, 0.384);
   box-shadow: var(--shadow-xl);
   border-radius: 30px;
   overflow: hidden;
@@ -1761,27 +1993,36 @@ onUnmounted(() => {
   border-radius: 10px;
 }
 
-.bank-det { display: flex; flex-direction: column; }
+.bank-det { 
+  display: flex; 
+  flex-direction: column; 
+}
 
-.bank-name { font-weight: 700; color: var(--text-primary); font-size: 0.95rem; }
+.bank-name { 
+  font-weight: 700; 
+  color: var(--text-primary); 
+  font-size: 0.95rem; 
+}
 
-.bank-acc-name { font-size: 0.85rem; color: var(--text-secondary); }
+.bank-acc-name { 
+  font-size: 0.85rem; 
+  color: var(--text-secondary); 
+}
 
-.bank-acc { font-size: 0.85rem; color: var(--text-muted); font-family: monospace; font-weight: 600; }
+.bank-acc { 
+  font-size: 0.85rem; 
+  color: var(--text-muted); 
+  font-family: monospace; 
+  font-weight: 600; 
+}
 
 /* Academic Records */
-.records-stack { display: flex; flex-direction: column; gap: 0.5rem; }
-
-.record-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1rem;
-  background: var(--bg-primary);
-  border-radius: 12px;
-  border: 1px solid var(--border-primary);
-  transition: all 0.2s ease;
+.records-stack { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0.5rem; 
 }
+
 
 .record-item:hover {
   border-color: var(--color-primary);
@@ -1789,13 +2030,29 @@ onUnmounted(() => {
   background: var(--surface);
 }
 
-.record-info { display: flex; flex-direction: column; }
+.record-info { 
+  display: flex; 
+  flex-direction: column; 
+}
 
-.sem-label { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+.sem-label { 
+  font-weight: 600; 
+  color: var(--text-primary); 
+  font-size: 0.95rem; 
+}
 
-.record-gpa-val { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.1rem; }
+.record-gpa-val { 
+  font-size: 0.85rem; 
+  color: var(--text-muted); 
+  margin-top: 0.1rem; 
+}
 
-.record-actions { display: flex; align-items: center; gap: 0.5rem; }
+.record-actions { 
+  display: flex; 
+  align-items: center; 
+  gap: 0.5rem; 
+  justify-content: space-between; 
+}
 
 .record-action-btn {
   display: flex;
@@ -1811,8 +2068,23 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-.record-action-btn.view { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.record-action-btn.view:hover { background: #10b981; color: white; }
+.record-action-btn.view { 
+  background: rgba(16, 185, 129, 0.1); 
+  color: #10b981; 
+}
+.record-action-btn.view:hover { 
+  background: #10b981; 
+  color: white; 
+}
+
+.record-action-btn.delete { 
+  background: rgba(239, 68, 68, 0.1); 
+  color: #ef4444; 
+}
+.record-action-btn.delete:hover { 
+  background: #ef4444; 
+  color: white; 
+}
 
 .empty-records {
   background: var(--bg-primary);
@@ -1821,8 +2093,13 @@ onUnmounted(() => {
 }
 
 /* Mini Audit */
-.mini-audit { font-size: 0.8rem; color: var(--text-muted); }
-.mini-audit p { margin: 0.2rem 0; }
+.mini-audit { 
+  font-size: 0.8rem; 
+  color: var(--text-muted); 
+}
+.mini-audit p { 
+  margin: 0.2rem 0; 
+}
 
 /* card-details (wallet card) */
 .card-details {
@@ -1866,8 +2143,13 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.wallet-card .card-header-title { border-bottom: none; }
-.wallet-card .card-icon { background-color: #fff; color: var(--color-primary); }
+.wallet-card .card-header-title { 
+  border-bottom: none; 
+}
+.wallet-card .card-icon { 
+  background-color: #fff; 
+  color: var(--color-primary); 
+}
 
 /* Responsive */
 @media (max-width: 992px) {
@@ -1881,21 +2163,24 @@ onUnmounted(() => {
     /* padding: 1.5rem 1rem; */
     min-height: auto;
   }
-
+  
+ 
   .hero-content {
     flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 1rem;
     padding: 1rem .5rem;
+    margin-top: -65px;
   }
+  
   .badge-row .premium-badge {
-    background-color: #4834d445;
-    border: 1px solid #4834d468;
-    color: #4834d4;
+    background-color: #715df325;
+    border: 1px solid #715df368;
+    color: #9e8fff;
   }
   .badge-row i{
-    color: #4834d4 !important;
+    color: #715df3 !important;
   }
   .avatar-wrapper {
     width: 120px;
@@ -2053,7 +2338,9 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.modal-card-body { padding: 1.5rem; }
+.modal-card-body { 
+  padding: 1.5rem; 
+}
 
 .icon-box-sm {
   width: 36px;
@@ -2065,7 +2352,10 @@ onUnmounted(() => {
   font-size: 1.1rem;
 }
 
-.icon-box-sm.success { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.icon-box-sm.success { 
+  background: rgba(16, 185, 129, 0.1); 
+  color: #10b981; 
+}
 
 .close-btn {
   width: 32px;
@@ -2103,10 +2393,21 @@ onUnmounted(() => {
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
+.form-section{
+  margin-bottom: 2rem;
+}
+.custom-modal-body{
+  padding: 1rem;
+}
+.form-control:focus { 
+  outline: none; 
+  border-color: var(--color-primary); 
+}
 
-.form-control:focus { outline: none; border-color: var(--color-primary); }
-
-.form-text { font-size: 0.78rem; color: var(--text-muted); }
+.form-text { 
+  font-size: 0.78rem; 
+  color: var(--text-muted); 
+}
 
 .input-with-icon {
   position: relative;
@@ -2269,14 +2570,17 @@ onUnmounted(() => {
 .record-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  /* align-items: center; */
   padding: 1rem;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  margin-bottom: 0.75rem;
   transition: transform 0.2s, background 0.2s;
+  flex-direction: column;
+  width: 100%;  
+  gap: 1rem;
 }
+
 
 .record-item:hover {
   transform: translateX(4px);
@@ -2287,5 +2591,309 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
 }
+
+/* Custom Toast Notification */
+.custom-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  max-width: 380px;
+  color: #fff;
+}
+
+.toast-success {
+  border-left: 4px solid #10b981;
+}
+
+.toast-error {
+  border-left: 4px solid #ef4444;
+}
+
+.toast-icon {
+  font-size: 1.5rem;
+}
+
+.toast-success .toast-icon { color: #10b981; }
+.toast-error .toast-icon { color: #ef4444; }
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-title {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  margin-top: -2px;
+  font-size: 1.25rem;
+  transition: color 0.2s;
+}
+
+.toast-close:hover {
+  color: #fff;
+}
+
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+/* Custom Modal System (New) */
+.custom-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.custom-modal-wrapper {
+  background: var(--surface);
+  border-radius: 24px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-titles {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.header-icon.edit-icon { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+
+.title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.custom-modal-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.custom-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.custom-close-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.custom-modal-form {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.custom-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.custom-modal-footer {
+  padding: 1.25rem 2rem;
+  border-top: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: color-mix(in srgb, var(--color-primary) 1%, var(--surface));
+}
+
+.custom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.75rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+}
+
+.custom-btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.custom-btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.custom-btn-primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.custom-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.custom-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.custom-input-group.full-width { grid-column: span 2; }
+
+.custom-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.custom-input, .custom-select {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  border: 1.5px solid var(--border-primary);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.custom-input:focus, .custom-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.custom-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .custom-form-grid { grid-template-columns: 1fr; }
+  .custom-input-group.full-width { grid-column: span 1; }
+  .custom-modal-backdrop { padding: 0.5rem; }
+  .custom-modal-wrapper { border-radius: 16px; max-height: 95vh; }
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .custom-input {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.password-toggle:hover {
+  color: var(--color-primary);
+}
+
 </style>
 

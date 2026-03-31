@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <div class="stat-card">
+      <!-- <div class="stat-card">
         <div class="stat-icon">
           <i class="bi bi-patch-check"></i>
         </div>
@@ -49,7 +49,7 @@
           <h3 class="stat-number">{{ stats.pendingVerifications }}</h3>
           <p class="stat-label">Pending Verifications</p>
         </div>
-      </div>
+      </div> -->
 
       <div class="stat-card">
         <div class="stat-icon">

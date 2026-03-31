@@ -150,7 +150,7 @@ export const useSupabaseStudents = () => {
     }
   }
 
-  const uploadProfileImage = (studentId, file) => uploadFile(studentId, file, 'profiles', 'avatar-')
+  const uploadProfileImage = (studentId, file) => uploadFile(studentId, file, 'profile-pictures', 'avatar-')
   const uploadAcademicEvidence = (studentId, file) => uploadFile(studentId, file, 'academic-evidence')
   const uploadAdmissionLetter = (studentId, file) => uploadFile(studentId, file, 'beneficiary-files', 'admission-')
 
@@ -423,8 +423,14 @@ export const useSupabaseStudents = () => {
         .update(updates)
         .eq('id', id)
         .select()
+      
       if (error) return { data: null, error }
-      return { data: data?.[0] || null, error: null }
+      
+      if (!data || data.length === 0) {
+        return { data: null, error: { message: 'Update failed: Database security policy (RLS) prevented you from modifying this profile.' } }
+      }
+      
+      return { data: data[0], error: null }
     } catch (err) {
       console.error('updateStudent error:', err)
       return { data: null, error: { message: err.message || 'Unable to update student.' } }
@@ -618,8 +624,18 @@ export const useSupabaseStudents = () => {
       return { error: null }
     }
     try {
-      const { error } = await supabase.from('academic_records').delete().eq('id', id)
-      return { error }
+      const { data, error } = await supabase
+        .from('academic_records')
+        .delete()
+        .eq('id', id)
+        .select()
+        
+      if (error) return { error }
+      
+      if (!data || data.length === 0) {
+        return { error: { message: 'Database security policy (RLS) prevented you from deleting this record.' } }
+      }
+      return { error: null }
     } catch (err) {
       return { error: { message: err.message || 'Unable to delete GPA record.' } }
     }
