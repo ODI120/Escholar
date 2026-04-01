@@ -1,24 +1,20 @@
-import Dashboard from './views/Dashboard.vue'
-import Students from './views/Students.vue'
-import StudentDetail from './views/StudentDetail.vue'
-
 export default [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard,
+    component: () => import('./views/Dashboard.vue'),
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
     path: '/students',
     name: 'Students',
-    component: Students,
+    component: () => import('./views/Students.vue'),
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
     path: '/students/:id',
     name: 'StudentDetail',
-    component: StudentDetail,
+    component: () => import('./views/StudentDetail.vue'),
     meta: { requiresAuth: true, role: 'admin' }
   },
   {

@@ -43,6 +43,7 @@
               :src="student.profile_picture"
               :alt="student.full_name"
               class="profile-avatar-img"
+              loading="lazy"
             >
             <div v-else class="profile-avatar-placeholder">
               {{ student.full_name.charAt(0).toUpperCase() }}

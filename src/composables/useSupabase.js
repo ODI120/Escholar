@@ -319,13 +319,63 @@ export const useSupabaseStudents = () => {
     }
   ]
 
-  const getStudents = async () => {
+  const getStudents = async (options = {}) => {
     if (isMock) return { data: mockStudents, error: null }
     try {
-      const { data, error } = await supabase.from('students').select('*, payments(*)').order('created_at', { ascending: false })
+      const selectQuery = options.includePayments 
+        ? '*, payments(*)' 
+        : `
+          id, 
+          full_name, 
+          email, 
+          admission_date, 
+          gender, 
+          phone_number, 
+          profile_picture, 
+          school, 
+          department, 
+          level, 
+          status, 
+          school_fees, 
+          course_duration, 
+          years_remaining,
+          created_at
+        `
+
+      const { data, error } = await supabase
+        .from('students')
+        .select(selectQuery)
+        .order('created_at', { ascending: false })
       return { data, error }
     } catch (err) {
       return { data: [], error: { message: err.message || 'Database error' } }
+    }
+  }
+
+  const getStats = async () => {
+    if (isMock) {
+      const funds = mockStudents.reduce((sum, s) => {
+        return sum + (s.payments?.reduce((sub, p) => sub + (p.amount || 0), 0) || 0)
+      }, 0)
+      return { 
+        data: { 
+          totalStudents: mockStudents.length,
+          fundsDisbursed: funds
+        }, 
+        error: null 
+      }
+    }
+    try {
+      // Use a single query for total disbursed sum if possible, or fetch amounts
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('amount')
+      
+      const totalFunds = paymentsData?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+      
+      return { data: { fundsDisbursed: totalFunds }, error: paymentsError }
+    } catch (err) {
+      return { data: null, error: err }
     }
   }
 
@@ -716,7 +766,8 @@ export const useSupabaseStudents = () => {
     deletePayment,
     deleteAcademicRecord,
     updateAcademicRecord,
-    subscribeToStudentUpdates
+    subscribeToStudentUpdates,
+    getStats
   }
 }
 

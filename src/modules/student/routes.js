@@ -1,7 +1,3 @@
-import StudentDashboard from './views/StudentDashboard.vue'
-import StudentLogin from './views/StudentLogin.vue'
-import ResetPassword from './views/ResetPassword.vue'
-
 export default [
   {
     path: '/student',
@@ -10,7 +6,7 @@ export default [
   {
     path: '/student/login',
     name: 'StudentLogin',
-    component: StudentLogin,
+    component: () => import('./views/StudentLogin.vue'),
     meta: { 
       requiresAuth: false,
       role: 'student' 
@@ -19,7 +15,7 @@ export default [
   {
     path: '/student/dashboard',
     name: 'StudentDashboard',
-    component: StudentDashboard,
+    component: () => import('./views/StudentDashboard.vue'),
     meta: { 
       requiresAuth: true,
       role: 'student'
@@ -28,7 +24,7 @@ export default [
   {
     path: '/student/reset-password',
     name: 'ResetPassword',
-    component: ResetPassword,
+    component: () => import('./views/ResetPassword.vue'),
     meta: { 
       requiresAuth: false,
       role: 'student'

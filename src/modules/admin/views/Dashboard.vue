@@ -83,6 +83,7 @@
                 v-if="student.profile_picture"
                 :src="student.profile_picture"
                 :alt="student.full_name"
+                loading="lazy"
               >
               <div v-else class="avatar-initial">
                 {{ student.full_name.charAt(0).toUpperCase() }}
@@ -139,7 +140,7 @@
                         v-if="student.profile_picture"
                         :src="student.profile_picture"
                         :alt="student.full_name"
-                        
+                        loading="lazy"
                       >
                       <div v-else class="avatar-placeholder rounded-circle">
                         {{ student.full_name.charAt(0).toUpperCase() }}
@@ -175,7 +176,7 @@ import { Chart, registerables } from 'chart.js'
 
 Chart.register(...registerables)
 
-const { getStudents } = useSupabaseStudents()
+const { getStudents, getStats } = useSupabaseStudents()
 
 const loading = ref(true)
 const students = ref([])
@@ -425,42 +426,39 @@ const renderCharts = () => {
 const loadData = async () => {
   loading.value = true
   try {
-    const { data, error } = await getStudents()
-    if (!error && data) {
-      students.value = data
-      
-      // Fetch pending verifications count
-      const { count, error: countError } = await supabase
-        .from('academic_records')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-      
-      calculateStats(count || 0)
+    const studentResponse = await getStudents()
+    const statsResponse = await getStats()
+    
+    if (studentResponse.data) {
+      students.value = studentResponse.data
+      recentStudents.value = studentResponse.data.slice(0, 5)
       await getTopStudents()
-      recentStudents.value = data.slice(0, 5) // Show last 5 students
     }
+    
+    // Fetch pending verifications count
+    const { count } = await supabase
+      .from('academic_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    
+    calculateStats(count || 0, statsResponse.data?.fundsDisbursed || 0)
+    
   } catch (err) {
-    console.error('Error loading students:', err)
+    console.error('Error loading dashboard data:', err)
   } finally {
     loading.value = false
   }
 }
 
-const calculateStats = (pendingCount = 0) => {
+const calculateStats = (pendingCount = 0, totalFunds = 0) => {
   const total = students.value.length
   const graduated = students.value.filter(s => s.status === 'graduated').length
-  const funds = students.value.reduce((sum, s) => {
-    if (s.payments && Array.isArray(s.payments)) {
-      return sum + s.payments.reduce((sub, p) => sub + (p.amount || 0), 0)
-    }
-    return sum
-  }, 0)
 
   stats.value = {
     totalStudents: total,
     graduatedStudents: graduated,
     nonGraduated: total - graduated,
-    fundsDisbursed: funds,
+    fundsDisbursed: totalFunds,
     pendingVerifications: pendingCount
   }
 }

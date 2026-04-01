@@ -61,12 +61,14 @@
                   :src="student.profile_picture"
                   :alt="student.full_name"
                   class="avatar-img"
+                  loading="lazy"
                 >
                 <img
                   v-else
                   :src="`https://ui-avatars.com/api/?name=${student.full_name ? student.full_name.split(' ').join('+') : 'U'}&background=e9ecef&color=6c757d&size=100&font-size=0.4&bold=true`"
                   :alt="student.full_name"
                   class="avatar-img"
+                  loading="lazy"
                 >
               </div>
               <div class="name-status">

@@ -12,7 +12,7 @@
         <div class="hero-bg" :style="studentData.profile_picture ? `background-image: url(${studentData.profile_picture})` : ''"></div>
           <div class="hero-content">
             <div class="avatar-wrapper">
-              <img :src="studentData.profile_picture || `https://ui-avatars.com/api/?name=${studentData.full_name}&background=random`" alt="Avatar" class="avatar-img" />
+              <img :src="studentData.profile_picture || `https://ui-avatars.com/api/?name=${studentData.full_name}&background=random`" alt="Avatar" class="avatar-img" loading="lazy" />
             </div>
             <div class="hero-info">
               <div class="badge-row">
