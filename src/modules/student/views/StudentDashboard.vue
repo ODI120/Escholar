@@ -114,7 +114,7 @@
                   <h3>Academic Performance</h3>
                 </div>
                 <button class="add-btn-sm" @click="openAcademicModal" :disabled="pendingSemesters.length === 0">
-                  <i class="bi bi-plus-lg"></i> Add GPA
+                  <i class="bi bi-plus-lg"></i> <span class="btn-text">Add GPA</span>
                 </button>
               </div>
               <div class="card-body">
@@ -2261,7 +2261,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem;
   border-radius: 8px;
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   color: var(--color-primary);
@@ -2859,10 +2859,19 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .custom-form-grid { grid-template-columns: 1fr; }
-  .custom-input-group.full-width { grid-column: span 1; }
-  .custom-modal-backdrop { padding: 0.5rem; }
-  .custom-modal-wrapper { border-radius: 16px; max-height: 95vh; }
+  .custom-form-grid { 
+    grid-template-columns: 1fr; 
+  }
+  .custom-input-group.full-width { 
+    grid-column: span 1; 
+  }
+  .custom-modal-backdrop { 
+    padding: 0.5rem; 
+  }
+  .custom-modal-wrapper { 
+    border-radius: 16px; 
+    max-height: 95vh; 
+  }
 }
 
 .password-input-wrapper {
@@ -2893,6 +2902,13 @@ onUnmounted(() => {
 
 .password-toggle:hover {
   color: var(--color-primary);
+}
+
+@media (max-width: 375px) {
+  .btn-text{
+    display: none;
+  }
+  
 }
 
 </style>

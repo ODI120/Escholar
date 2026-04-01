@@ -15,7 +15,7 @@
       </div>
     </div>
 
-        <div class="card">
+    <div class="card">
       <div class="card-header">
         <h3 class="card-title">Admin users</h3>
         <span class="badge">{{ admins.length }} total</span>

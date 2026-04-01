@@ -78,7 +78,7 @@
         </div>
 
         <div class="header-right">
-          <ThemeToggle inline style="margin-right: 0.5rem;" />
+          <ThemeToggle inline class="header-theme-toggle" />
           <button class="icon-button notification-btn" aria-label="Notifications" @click="toggleNotifications">
              <i class="bi bi-bell"></i>
              <span v-if="pendingRecords.length > 0" class="notification-badge">{{ pendingRecords.length }}</span>
@@ -103,8 +103,19 @@
                   <span class="dropdown-email" v-if="adminEmail">{{ adminEmail }}</span>
                 </div>
                 <!-- Profile actions -->
-                <a href="#" class="dropdown-item" @click.prevent="closeDropdown"><i class="bi bi-person"></i> Profile</a>
-                <a href="#" class="dropdown-item" @click.prevent="closeDropdown"><i class="bi bi-gear"></i> Settings</a>
+                <router-link to="/admin-profile" class="dropdown-item" @click="closeDropdown">
+                  <i class="bi bi-person"></i> Profile
+                </router-link>
+                <router-link to="/settings" class="dropdown-item" @click="closeDropdown">
+                  <i class="bi bi-gear"></i> Settings
+                </router-link>
+                
+                <!-- Mobile Theme Toggle in Dropdown -->
+                <div class="dropdown-item mobile-768-only" @click="toggleTheme">
+                  <i :class="isLight ? 'bi bi-moon' : 'bi bi-sun'"></i>
+                  <span>{{ isLight ? 'Dark Mode' : 'Light Mode' }}</span>
+                </div>
+
                 <div class="dropdown-divider"></div>
                 <a href="#" class="dropdown-item text-danger" @click.prevent="handleLogout"><i class="bi bi-box-arrow-right"></i> Logout</a>
               </div>
@@ -185,6 +196,9 @@ import { useSupabaseAuth, supabase } from '../composables/useSupabase.js'
 import { useSupabaseStudents } from '../composables/useSupabase.js'
 import logo from '../assets/logo.png'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import { useTheme } from '../composables/useTheme.js'
+
+const { isLight, toggleTheme } = useTheme()
 
 const router = useRouter()
 const route = useRoute()
@@ -1018,6 +1032,22 @@ button {
   .profile-avatar {
     width: 28px;
     height: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-theme-toggle {
+    display: none !important;
+  }
+  
+  .mobile-768-only {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-768-only {
+    display: none !important;
   }
 }
 

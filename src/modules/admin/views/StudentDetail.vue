@@ -56,7 +56,7 @@
             </div>
             <p class="student-subtitle">
               <i class="bi bi-mortarboard-fill"></i>
-              {{ student.school }} • <span class="Department">{{ student.department }}</span>
+              {{ student.school }}  <span class="dot">•</span> <span class="Department">{{ student.department }}</span>
             </p>
             <div class="quick-stats">
               <div class="quick-stat-item">
@@ -197,7 +197,7 @@
                 <h3>Payment History</h3>
               </div>
               <button class="add-btn-sm" @click="addPayment">
-                <i class="bi bi-plus-lg"></i> Record Payment
+                <i class="bi bi-plus-lg"></i> <span class="btn-text">Record Payment</span>
               </button>
             </div>
             <div class="card-body p-0">
@@ -215,7 +215,7 @@
                   <tbody>
                     <tr v-for="payment in student.payments" :key="payment.id">
                       <td data-label="Date">{{ formatDate(payment.date) }}</td>
-                      <td data-label="Description" class="text-truncate" style="max-width: 200px;">{{ payment.description }}</td>
+                      <td data-label="Description" class="text-truncate" >{{ payment.description }}</td>
                       <td data-label="Amount" class="fw-bold">₦{{ formatCurrency(payment.amount) }}</td>
                       <td data-label="Status">
                         <span class="status-dot" :class="payment.status"></span>
@@ -261,7 +261,8 @@
                 <h3>Academic Performance</h3>
               </div>
               <button class="add-btn-sm" @click="addAcademicRecord">
-                <i class="bi bi-plus-lg"></i> Record GPA
+                <i class="bi bi-plus-lg"></i>
+                 <span class="btn-text">Record GPA</span>
               </button>
             </div>
             <div class="card-body">
@@ -360,7 +361,7 @@
             <div class="records-stack">
               <div v-for="record in academicProgress.filter(r => r.status === 'Recorded')" :key="record.record_id" class="record-item">
                 <div class="record-info">
-                  <div class="d-flex align-items-center gap-2 mb-1">
+                  <div class="d-flex align-items-center gap-4 mb-1">
                     <span class="sem-label">{{ record.expected_semester_label || `${record.semester}-${Math.ceil(record.semester_number/2)}` }}</span>
                     <span 
                       class="status-badge-sm" 
@@ -387,6 +388,7 @@
                       title="Reject Record"
                     >
                       <i class="bi bi-x-lg"></i>
+                      
                     </button>
                   </template>
 
@@ -398,14 +400,14 @@
                     title="View Evidence"
                   >
                     <i class="bi bi-file-earmark-check"></i>
-                    <!-- <span>View</span> -->
+                    <span>View</span>
                   </a>
                   <button 
                     @click="confirmDeleteAcademicRecord(record.record_id)" 
                     class="record-action-btn delete" 
                     title="Delete Record"
                   >
-                    <i class="bi bi-trash"></i>
+                    <i class="bi bi-trash"></i> delete
                   </button>
                 </div>
               </div>
@@ -772,10 +774,10 @@ const renderAcademicChart = async () => {
 
   const borderColors = academicProgress.value.map(r => {
     if (r.status === 'Not Recorded') return isDark ? 'rgba(156, 163, 175, 0.2)' : 'rgba(156, 163, 175, 0.1)'
-    if (r.verification_status === 'rejected') return '#ef4444'
-    if (r.verification_status === 'pending') return '#f59e0b'
-    if (r.gpa >= 4.0) return '#22c55e'
-    return '#6B59FF'
+    if (r.verification_status === 'rejected') return '#ef444450'
+    if (r.verification_status === 'pending') return '#f59e0b50'
+    if (r.gpa >= 4.0) return '#22c55e50'
+    return '#6B59FF50'
   })
 
   chartInstance.value = new Chart(ctx, {
@@ -1258,7 +1260,7 @@ onMounted(() => {
   border: 1px solid var(--border-primary);
   display: flex;
   align-items: flex-end;
-  padding: 1.25rem;
+  padding: 1rem;
   position: relative;
   transition: box-shadow 0.35s ease;
 }
@@ -1347,10 +1349,18 @@ onMounted(() => {
   z-index: 3;
 }
 
-.status-indicator.active { background-color: #10b981; }
-.status-indicator.graduated { background-color: #3b82f6; }
-.status-indicator.inactive { background-color: #f59e0b; }
-.status-indicator.suspended { background-color: #ef4444; }
+.status-indicator.active { 
+  background-color: #10b981; 
+}
+.status-indicator.graduated { 
+  background-color: #3b82f6; 
+}
+.status-indicator.inactive { 
+  background-color: #f59e0b; 
+}
+.status-indicator.suspended { 
+  background-color: #ef4444; 
+}
 
 .profile-main-info {
   flex: 1;
@@ -1384,10 +1394,22 @@ onMounted(() => {
   letter-spacing: 0.05em;
 }
 
-.status-badge.active { background: #d1fae5; color: #065f46; }
-.status-badge.graduated { background: #dbeafe; color: #1e40af; }
-.status-badge.inactive { background: #fef3c7; color: #92400e; }
-.status-badge.suspended { background: #fee2e2; color: #991b1b; }
+.status-badge.active { 
+  background: #d1fae5; 
+  color: #065f46; 
+}
+.status-badge.graduated { 
+  background: #dbeafe; 
+  color: #1e40af; 
+}
+.status-badge.inactive { 
+  background: #fef3c7; 
+  color: #92400e; 
+}
+.status-badge.suspended { 
+  background: #fee2e2; 
+  color: #991b1b; 
+}
 
 .student-subtitle {
   color: var(--text-secondary);
@@ -1397,6 +1419,23 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-style: italic;
+}
+.dot{
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+}
+@media (max-width: 768px) {
+  .student-subtitle {
+    font-size: 0.85rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .student-subtitle i{
+    display: none;
+  }
+  .dot{
+    display: none;
+  }
 }
 
 .quick-stats {
@@ -1460,6 +1499,7 @@ onMounted(() => {
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border-primary);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .detail-card:hover {
@@ -1502,6 +1542,15 @@ onMounted(() => {
 
 .card-body {
   padding: 1rem;
+  box-sizing: border-box;
+}
+@media (max-width: 320px) {
+  .card-body {
+    padding: 0.5rem;
+  }
+  .empty-state-card {
+    margin: 0;
+  }
 }
 
 /* Information Grid */
@@ -1778,8 +1827,14 @@ onMounted(() => {
   font-family: var(--font-mono);
 }
 
-.gpa-value.high { color: #10b981; background: rgba(16, 185, 129, 0.1); }
-.gpa-value.low { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+.gpa-value.high { 
+  color: #10b981; 
+  background: rgba(16, 185, 129, 0.1); 
+}
+.gpa-value.low { 
+  color: #f43f5e; 
+  background: rgba(244, 63, 94, 0.1); 
+}
 
 .sem-label {
   font-weight: 600;
@@ -1795,13 +1850,15 @@ onMounted(() => {
 
 .record-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
   padding: 0.85rem 1rem;
   background: var(--bg-primary);
   border-radius: 12px;
   border: 1px solid var(--border-primary);
   transition: all 0.2s ease;
+  width: 100%;
+  gap: 10px;
 }
 
 .record-item:hover {
@@ -1824,6 +1881,7 @@ onMounted(() => {
 .record-actions {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 }
 
@@ -1852,9 +1910,9 @@ onMounted(() => {
 }
 
 .record-action-btn.delete {
-  width: 32px;
+  /* width: 32px; */
   height: 32px;
-  padding: 0;
+  padding: 0.4rem 0.75rem;
   justify-content: center;
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
@@ -1879,9 +1937,15 @@ onMounted(() => {
   margin-right: 0.5rem;
 }
 
-.status-dot.paid { background: #10b981; }
-.status-dot.pending { background: #f59e0b; }
-.status-dot.failed { background: #ef4444; }
+.status-dot.paid { 
+  background: #10b981; 
+}
+.status-dot.pending { 
+  background: #f59e0b; 
+}
+.status-dot.failed { 
+  background: #ef4444; 
+}
 
 .status-name {
   font-size: 0.85rem;
@@ -1889,24 +1953,15 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.add-btn-sm {
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  color: var(--color-primary);
-  border: none;
-  font-weight: 700;
-  font-size: 0.8rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 
 .add-btn-sm:hover {
   background: var(--color-primary);
   color: white;
+  i {
+    color: white;
+    background-color: #ffffff18;
+  }
 }
 
 /* Financial Card */
@@ -1938,8 +1993,12 @@ onMounted(() => {
   font-weight: 800;
 }
 
-.stat-amount.primary { color: var(--color-primary); }
-.stat-amount.blue { color: #3b82f6; }
+.stat-amount.primary { 
+  color: var(--color-primary); 
+}
+.stat-amount.blue { 
+  color: #3b82f6; 
+}
 
 .financial-sep {
   height: 1px;
@@ -2346,7 +2405,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem 0.85rem;
+  padding: 0.5rem 0.5rem;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-primary);
@@ -2466,7 +2525,7 @@ onMounted(() => {
 }
 
 /* Record Item & Status Badges */
-.record-item {
+/* .record-item {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
@@ -2476,13 +2535,13 @@ onMounted(() => {
   border: 1px solid var(--border-primary) !important;
   margin-bottom: 0.75rem !important;
   transition: all 0.2s ease !important;
-}
+} */
 
-.record-item:hover {
+/* .record-item:hover {
   transform: translateX(4px) !important;
   background: var(--surface) !important;
   border-color: var(--color-primary) !important;
-}
+} */
 
 .status-badge-sm {
   font-size: 0.65rem;
@@ -2661,6 +2720,10 @@ onMounted(() => {
   .breadcrumb-nav span, .breadcrumb-nav a, .breadcrumb-nav i{
    display: none;
   }
+   .student-subtitle {
+    align-items: center;
+    text-align: center;
+  }
 
 }
 
@@ -2679,6 +2742,12 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 375px) {
+  .btn-text{
+    display: none;
+  }
+
+}
 @media (max-width: 320px) {
   .profile-main-info i{
     display: none;

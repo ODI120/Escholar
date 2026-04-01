@@ -353,8 +353,18 @@ button {
     display: block !important;
   }
   .nav-actions {
- 
-  gap: 0;
+    gap: 0;
+  }
 }
+@media (max-width: 480px) {
+  .content{
+    padding:  0.5rem;
+  }
+  .top-nav-container{
+    padding: 0.5rem;
+  }
+  .suspended-topnav{
+    margin: 0.5rem 0;
+  }
 }
 </style>

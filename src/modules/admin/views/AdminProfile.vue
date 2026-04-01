@@ -45,7 +45,7 @@
             <p class="admin-email-text">{{ admin.email }}</p>
             <div class="role-status-row mt-3">
               <span class="role-pill" :class="admin.role">{{ admin.role }}</span>
-              <span class="status-badge" :class="admin.status">{{ admin.status }}</span>
+              <!-- <span class="status-badge" :class="admin.status">{{ admin.status }}</span> -->
             </div>
             <div class="meta-info mt-4">
               <div class="meta-item">
@@ -77,7 +77,7 @@
             <div class="card-header between">
               <h3 class="card-title">Account Details</h3>
               <button v-if="!isEditing && (isOwnProfile || canEditRole)" class="btn-sm btn-outline btn-edit-trigger" @click="startEditing">
-                <i class="bi bi-pencil"></i> Edit Profile
+                <i class="bi bi-pencil"></i> Edit
               </button>
             </div>
             
@@ -560,14 +560,36 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 1rem;
 }
 
-.role-pill.super_admin { background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); }
-.role-pill.admin { background: rgba(22, 163, 74, 0.1); color: #16a34a; border: 1px solid rgba(22, 163, 74, 0.2); }
-.role-pill.viewer { background: rgba(75, 85, 99, 0.1); color: #4b5563; border: 1px solid rgba(75, 85, 99, 0.2); }
+.role-pill.super_admin { 
+  background: rgba(220, 38, 38, 0.1); 
+  color: #dc2626; 
+  border: 1px solid rgba(220, 38, 38, 0.2); 
+  margin-bottom: 1rem;
+}
+.role-pill.admin { 
+  background: rgba(22, 163, 74, 0.1); 
+  color: #16a34a; 
+  border: 1px solid rgba(22, 163, 74, 0.2); 
+}
+.role-pill.viewer { 
+  background: rgba(75, 85, 99, 0.1); 
+  color: #4b5563; 
+  border: 1px solid rgba(75, 85, 99, 0.2); 
+}
 
-.status-badge.active { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
-.status-badge.suspended { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
+.status-badge.active { 
+  background: rgba(16, 185, 129, 0.1); 
+  color: #10b981; 
+  border: 1px solid rgba(16, 185, 129, 0.2); 
+}
+.status-badge.suspended { 
+  background: rgba(244, 63, 94, 0.1); 
+  color: #f43f5e; 
+  border: 1px solid rgba(244, 63, 94, 0.2); 
+}
 
 /* Meta Info */
 .meta-info {
@@ -586,8 +608,14 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
-.meta-item .label { color: var(--text-secondary); font-weight: 500; }
-.meta-item .value { font-weight: 600; color: var(--text-primary); }
+.meta-item .label {   
+  color: var(--text-secondary); 
+  font-weight: 500; 
+}
+.meta-item .value {  
+  font-weight: 600; 
+  color: var(--text-primary); 
+}
 
 /* Danger Zone */
 .danger-zone {
@@ -662,12 +690,15 @@ onMounted(() => {
 }
 
 .btn-edit-trigger {
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0.5rem 1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  border: 1px solid #6366f1;
+  background-color: #6366f115;
+  color: var(--color-primary);
 }
 
 .premium-field .form-label {
@@ -843,10 +874,31 @@ onMounted(() => {
   padding: 0.75rem 1.5rem;
   border-radius: 14px;
 }
-
+.header-titles{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
 @media (max-width: 992px) {
   .profile-grid {
     grid-template-columns: 1fr;
   }
+  .header-titles{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+  }
 }
+@media (max-width: 768px) {
+  .header-titles p{
+    margin: 0;
+    font-size: 0.8rem;
+  }
+  .header-actions{
+    display: none;
+  }
+  
+}
+
 </style>
