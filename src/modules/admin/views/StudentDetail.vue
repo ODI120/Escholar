@@ -68,7 +68,7 @@
 
               <div class="quick-stat-item">
                 <span class="stat-lbl">Admission</span>
-                <span class="stat-val">{{ student.year_of_admission || 'N/A' }}</span>
+                <span class="stat-val">{{ formatDate(student.admission_date) }}</span>
               </div>
 
               <div class="vertical-line"></div>
@@ -118,8 +118,8 @@
                   <span>{{ student.course_duration ? `${student.course_duration} Years` : '—' }}</span>
                 </div>
                 <div class="info-group">
-                  <label>Admission Year</label>
-                  <span>{{ student.year_of_admission || '—' }}</span>
+                  <label>Admission Date</label>
+                  <span>{{ formatDate(student.admission_date) }}</span>
                 </div>
                 <div class="info-group full-width">
                   <label>Institution</label>

@@ -87,7 +87,7 @@
               <div class="stat-divider"></div>
               <div class="stat-box">
                 <span class="stat-label">Admitted</span>
-                <span class="stat-value">{{ student.year_of_admission || 'N/A' }}</span>
+                <span class="stat-value">{{ formatDate(student.admission_date) }}</span>
               </div>
             </div>
 
@@ -200,7 +200,7 @@
                           <i class="bi bi-x"></i>
                         </button>
                       </div>
-                      <div v-else class="image-placeholder" @click="$refs.profilePicInput.click()">
+                      <div v-else class="image-placeholder-box" @click="$refs.profilePicInput.click()">
                         <i class="bi bi-camera"></i>
                         <span>Click to upload image</span>
                       </div>
@@ -226,8 +226,8 @@
                     <input type="number" min="1" max="10" class="custom-input" v-model="studentForm.course_duration" required placeholder="e.g. 4">
                   </div>
                   <div class="custom-input-group">
-                    <label class="custom-label">Year of Admission</label>
-                    <input type="number" min="1900" class="custom-input" v-model="studentForm.year_of_admission" placeholder="e.g. 2024">
+                    <label class="custom-label">Admission Date <span class="required">*</span></label>
+                    <input type="date" class="custom-input" v-model="studentForm.admission_date" required>
                   </div>
                   <div class="custom-input-group">
                     <label class="custom-label">Admission Letter URL</label>
@@ -330,7 +330,7 @@ const itemsPerPage = ref(8)
 const studentForm = ref({
   full_name: '',
   email: '',
-  year_of_admission: '',
+  admission_date: new Date().toISOString().split('T')[0],
   gender: '',
   phone_number: '',
   profile_picture: '',
@@ -364,7 +364,7 @@ const filteredStudents = computed(() => {
       (student.email || '').toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       student.school.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       student.department.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      (student.year_of_admission ? String(student.year_of_admission) : '').includes(searchQuery.value)
+      (student.admission_date ? String(student.admission_date) : '').includes(searchQuery.value)
 
     const matchesStatus = student.status === 'active'
     const matchesLevel = !levelFilter.value || student.level === levelFilter.value
@@ -423,6 +423,12 @@ const getStatusBadgeClass = (status) => {
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-NG').format(amount || 0)
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
 }
 
 const clearFilters = () => {
@@ -497,7 +503,7 @@ const closeModal = () => {
   studentForm.value = {
     full_name: '',
     email: '',
-    year_of_admission: '',
+    admission_date: new Date().toISOString().split('T')[0],
     gender: '',
     phone_number: '',
     profile_picture: '',
@@ -559,8 +565,13 @@ const handleSubmit = async () => {
 
   try {
     // Dynamically calculate level, status, and years remaining before submit
-    const currentYear = new Date().getFullYear();
-    const admissionYear = Number(studentForm.value.year_of_admission);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed (1-12)
+    
+    const admissionDate = new Date(studentForm.value.admission_date);
+    const admissionYear = admissionDate.getFullYear();
+    const admissionMonth = admissionDate.getMonth() + 1; // 1-indexed (1-12)
     const duration = Number(studentForm.value.course_duration);
     
     let calculatedLevel = '100';
@@ -568,15 +579,20 @@ const handleSubmit = async () => {
     let yearsRemaining = duration;
 
     if (admissionYear && duration) {
-       const yearsPassed = currentYear - admissionYear;
+       let yearsPassed = currentYear - admissionYear;
        
+       // If current month is before admission month, the full academic year hasn't passed yet
+       if (currentMonth < admissionMonth) {
+         yearsPassed -= 1;
+       }
+
        if (yearsPassed >= duration) {
          calculatedStatus = 'graduated';
          calculatedLevel = `${duration * 100}`;
          yearsRemaining = 0;
        } else {
          calculatedStatus = 'active';
-         // Level is strictly based on years passed + 1
+         // Level is years passed + 1 (e.g. 0 years passed = 100L, 1 year passed = 200L)
          const levelValue = Math.max(1, yearsPassed + 1) * 100;
          calculatedLevel = `${levelValue}`;
          yearsRemaining = Math.max(0, duration - yearsPassed);
@@ -604,7 +620,7 @@ const handleSubmit = async () => {
     }
 
     const databaseColumns = [
-      'full_name', 'email', 'year_of_admission', 'gender', 'phone_number', 
+      'full_name', 'email', 'admission_date', 'gender', 'phone_number', 
       'profile_picture', 'school', 'department', 'level', 'parent_name', 
       'parent_phone', 'account_number', 'account_name', 'bank_name', 
       'school_fees', 'remarks', 'admission_letter_url', 'status',
@@ -642,7 +658,7 @@ const exportData = () => {
     ...filteredStudents.value.map(student => [
       `"${student.full_name}"`,
       `"${student.email || ''}"`,
-      student.year_of_admission || '',
+      student.admission_date || '',
       student.gender,
       `"${student.phone_number}"`,
       `"${student.school}"`,

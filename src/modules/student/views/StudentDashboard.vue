@@ -250,8 +250,8 @@
                     <span>{{ studentData.course_duration ? `${studentData.course_duration} Years` : '—' }}</span>
                   </div>
                   <div class="info-group">
-                    <label>Admission Year</label>
-                    <span>{{ studentData.year_of_admission || '—' }}</span>
+                    <label>Admission Date</label>
+                    <span>{{ formatDate(studentData.admission_date) }}</span>
                   </div>
                   <div class="info-group full-width">
                     <label>Institution</label>
@@ -1072,8 +1072,9 @@ const submitAcademicRecord = async () => {
     const yearNum = Math.ceil(selectedSem.semester_number / 2)
     const semesterLabel = semPos === 1 ? '1st' : '2nd'
     
-    // Build session string from admission year
-    const admissionYear = studentData.value.year_of_admission || new Date().getFullYear()
+    // Build session string from admission date
+    const admissionDateArr = studentData.value.admission_date ? new Date(studentData.value.admission_date) : new Date()
+    const admissionYear = admissionDateArr.getFullYear()
     const sessionStartYear = admissionYear + yearNum - 1
     const session = `${sessionStartYear}/${sessionStartYear + 1}`
 
@@ -1788,6 +1789,13 @@ onUnmounted(() => {
   font-size: 0.95rem;
 }
 
+.doc-links{
+  display: flex;
+  flex-direction: column;
+  /* gap: .5rem; */
+  width: 100%;
+}
+
 .doc-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -2453,8 +2461,14 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary:hover:not(:disabled) { 
+  opacity: 0.88; 
+  transform: translateY(-1px); 
+}
+.btn-primary:disabled { 
+  opacity: 0.55; 
+  cursor: not-allowed; 
+}
 
 .btn-light-secondary {
   display: inline-flex;
@@ -2469,8 +2483,14 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-light-secondary:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
-.btn-light-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-light-secondary:hover:not(:disabled) { 
+  border-color: var(--color-primary); 
+  color: var(--color-primary); 
+}
+.btn-light-secondary:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
 
 /* Mini audit */
 .mini-audit { font-size: 0.8rem; color: var(--text-muted); }
@@ -2491,7 +2511,7 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--color-primary) 3%, var(--surface));
   border-radius: 14px;
   border: 1px dashed color-mix(in srgb, var(--color-primary) 30%, transparent);
-  width: 100%;
+  width: 100% !important;
 }
 
 .no-docs-info {
@@ -2904,6 +2924,24 @@ onUnmounted(() => {
   color: var(--color-primary);
 }
 
+@media (max-width: 425px) {
+  .custom-modal-body{
+  padding: .7rem;
+  }
+  .custom-modal-footer{
+    padding: 1rem .7rem;
+    justify-content: center;
+    justify-content: space-between;
+  }
+  .custom-modal-header{
+    padding: 1rem ;
+  }
+  .custom-modal-header .header-icon{
+    display: none;
+  }
+  
+  
+}
 @media (max-width: 375px) {
   .btn-text{
     display: none;

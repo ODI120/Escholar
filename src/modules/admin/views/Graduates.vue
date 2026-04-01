@@ -81,7 +81,7 @@
               <div class="stat-divider"></div>
               <div class="stat-box">
                 <span class="stat-label">Admitted</span>
-                <span class="stat-value">{{ student.year_of_admission || 'N/A' }}</span>
+                <span class="stat-value">{{ formatDate(student.admission_date) }}</span>
               </div>
             </div>
 
@@ -194,7 +194,7 @@
                           <i class="bi bi-x"></i>
                         </button>
                       </div>
-                      <div v-else class="image-placeholder" @click="$refs.profilePicInput.click()">
+                      <div v-else class="image-placeholder-box" @click="$refs.profilePicInput.click()">
                         <i class="bi bi-camera"></i>
                         <span>Click to upload image</span>
                       </div>
@@ -220,8 +220,8 @@
                     <input type="number" min="1" max="10" class="custom-input" v-model="studentForm.course_duration" required placeholder="e.g. 4">
                   </div>
                   <div class="custom-input-group">
-                    <label class="custom-label">Year of Admission</label>
-                    <input type="number" min="1900" class="custom-input" v-model="studentForm.year_of_admission" placeholder="e.g. 2024">
+                    <label class="custom-label">Admission Date</label>
+                    <input type="date" class="custom-input" v-model="studentForm.admission_date">
                   </div>
                   <div class="custom-input-group">
                     <label class="custom-label">Admission Letter URL</label>
@@ -324,7 +324,7 @@ const itemsPerPage = ref(8)
 const studentForm = ref({
   full_name: '',
   email: '',
-  year_of_admission: '',
+  admission_date: new Date().toISOString().split('T')[0],
   gender: '',
   phone_number: '',
   profile_picture: '',
@@ -419,6 +419,12 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-NG').format(amount || 0)
 }
 
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
+}
+
 const clearFilters = () => {
   searchQuery.value = ''
   statusFilter.value = ''
@@ -491,7 +497,7 @@ const closeModal = () => {
   studentForm.value = {
     full_name: '',
     email: '',
-    year_of_admission: '',
+    admission_date: new Date().toISOString().split('T')[0],
     gender: '',
     phone_number: '',
     profile_picture: '',
@@ -553,8 +559,8 @@ const handleSubmit = async () => {
 
   try {
     // Dynamically calculate level, status, and years remaining before submit
-    const currentYear = new Date().getFullYear();
-    const admissionYear = Number(studentForm.value.year_of_admission);
+    const admissionDate = new Date(studentForm.value.admission_date);
+    const admissionYear = admissionDate.getFullYear();
     const duration = Number(studentForm.value.course_duration);
     
     let calculatedLevel = '100';
@@ -598,7 +604,7 @@ const handleSubmit = async () => {
     }
 
     const databaseColumns = [
-      'full_name', 'email', 'year_of_admission', 'gender', 'phone_number', 
+      'full_name', 'email', 'admission_date', 'gender', 'phone_number', 
       'profile_picture', 'school', 'department', 'level', 'parent_name', 
       'parent_phone', 'account_number', 'account_name', 'bank_name', 
       'school_fees', 'remarks', 'admission_letter_url', 'status',
