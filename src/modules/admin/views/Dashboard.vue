@@ -11,55 +11,50 @@
 
     <!-- Stats Cards -->
     <div class="stats">
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-people"></i>
+      <template v-if="loading">
+        <div v-for="i in 4" :key="`stat-skel-${i}`" class="stat-card skeleton" style="min-height: 80px;"></div>
+      </template>
+      <template v-else>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="bi bi-people"></i>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-number">{{ stats.totalStudents }}</h3>
+            <p class="stat-label">Total Beneficiaries</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ stats.totalStudents }}</h3>
-          <p class="stat-label">Total Beneficiaries</p>
-        </div>
-      </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-mortarboard"></i>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="bi bi-mortarboard"></i>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-number">{{ stats.graduatedStudents }}</h3>
+            <p class="stat-label">Graduates</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ stats.graduatedStudents }}</h3>
-          <p class="stat-label">Graduates</p>
-        </div>
-      </div>
 
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-book"></i>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="bi bi-book"></i>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-number">{{ stats.nonGraduated }}</h3>
+            <p class="stat-label">Non‑Graduates</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ stats.nonGraduated }}</h3>
-          <p class="stat-label">Non‑Graduates</p>
-        </div>
-      </div>
 
-      <!-- <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-patch-check"></i>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <i class="bi bi-cash-coin"></i>
+          </div>
+          <div class="stat-content">
+            <h3 class="stat-number">₦{{ formatCurrency(stats.fundsDisbursed) }}</h3>
+            <p class="stat-label">Funds Disbursed</p>
+          </div>
         </div>
-        <div class="stat-content">
-          <h3 class="stat-number">{{ stats.pendingVerifications }}</h3>
-          <p class="stat-label">Pending Verifications</p>
-        </div>
-      </div> -->
-
-      <div class="stat-card">
-        <div class="stat-icon">
-          <i class="bi bi-cash-coin"></i>
-        </div>
-        <div class="stat-content">
-          <h3 class="stat-number">₦{{ formatCurrency(stats.fundsDisbursed) }}</h3>
-          <p class="stat-label">Funds Disbursed</p>
-        </div>
-      </div>
+      </template>
     </div>
 
     <!-- best students -->
@@ -68,7 +63,10 @@
         <h5 class="section-title">Best Performing Students</h5>
         <p>Top 3 students with the highest GPA</p>
       </div>
-      <div v-if="topStudents.length === 0" class="empty-state-card w-100 mx-auto">
+      <div v-if="loading" class="best-students-grid">
+        <div v-for="i in 3" :key="`top-skel-${i}`" class="student-card skeleton" style="min-height: 180px;"></div>
+      </div>
+      <div v-else-if="topStudents.length === 0" class="empty-state-card w-100 mx-auto">
         <div class="empty-icon"><i class="bi bi-graph-up"></i></div>
         <h4 class="empty-title">No Academic Records</h4>
         <p class="empty-subtitle">Once beneficiaries have their semester GPAs recorded, top performers will appear here.</p>
@@ -117,9 +115,8 @@
         <!-- <router-link to="/admin/students" class="view-all">View All</router-link> -->
       </div>
       <div class="card-body">
-        <div v-if="loading" class="text-center py-4">
-          <div class="loader"></div>
-          <span class="visually-hidden">Loading...</span>
+        <div v-if="loading" class="table-responsive">
+          <div v-for="i in 5" :key="`recent-skel-${i}`" class="row skeleton mb-2" style="height: 60px; border-radius: 12px; margin-left: 0; margin-right: 0;"></div>
         </div>
 
         <div v-else-if="recentStudents.length === 0" class="empty-state-card w-100 mx-auto">
@@ -284,9 +281,6 @@ const getTopStudents = async () => {
       .slice(0, 3)
 
     topStudents.value = studentsWithGPA
-
-    await nextTick()
-    renderCharts()
   } catch (err) {
     console.error('Error getting top students:', err)
   }
@@ -446,7 +440,11 @@ const loadData = async () => {
   } catch (err) {
     console.error('Error loading dashboard data:', err)
   } finally {
+    // Set loading false FIRST so v-else canvas elements are rendered in the DOM,
+    // then wait for Vue to flush the DOM update before drawing the charts.
     loading.value = false
+    await nextTick()
+    renderCharts()
   }
 }
 

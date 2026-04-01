@@ -1,9 +1,17 @@
 <template>
   <StudentLayout @edit-profile="openEditProfileModal">
     <div class="dashboard-wrapper">
-      <div v-if="loading" class="loading-state py-5 text-center">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-3 text-muted">Loading your secure portal...</p>
+      <div v-if="loading" class="dashboard-content px-0">
+        <div class="hero-section skeleton mb-4" style="height: 240px; border: none;"></div>
+        <div class="detail-main-grid">
+           <div class="content-col">
+              <div class="detail-card skeleton mb-4" style="height: 300px; border: none;"></div>
+              <div class="detail-card skeleton mb-4" style="height: 200px; border: none;"></div>
+           </div>
+           <div class="sidebar-col">
+              <div class="detail-card skeleton mb-4" style="height: 400px; border: none;"></div>
+           </div>
+        </div>
       </div>
 
       <div v-else-if="studentData" class="dashboard-content">

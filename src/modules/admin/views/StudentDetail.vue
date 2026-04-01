@@ -25,9 +25,17 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="detail-loading">
-      <div class="loader-spinner"></div>
-      <p>Loading beneficiary profile...</p>
+    <div v-if="loading" class="detail-container">
+      <div class="profile-hero-card skeleton mb-4" style="height: 220px; border: none;"></div>
+      <div class="detail-main-grid">
+        <div class="content-col">
+          <div class="detail-card skeleton mb-4" style="height: 300px; border: none;"></div>
+          <div class="detail-card skeleton mb-4" style="height: 200px; border: none;"></div>
+        </div>
+        <div class="sidebar-col">
+          <div class="detail-card skeleton mb-4" style="height: 400px; border: none;"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Main Content -->

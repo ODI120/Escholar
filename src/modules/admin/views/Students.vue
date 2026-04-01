@@ -37,9 +37,8 @@
       </div>
 
       <div class="card-body table">
-        <div v-if="loading" class="text-center py-4">
-          <div class="loader"></div>
-          <span class="visually-hidden">Loading...</span>
+        <div v-if="loading" class="beneficiaries-grid">
+          <div v-for="i in 8" :key="`skel-${i}`" class="beneficiary-card skeleton" style="min-height: 280px; border: none;"></div>
         </div>
 
         <div v-else-if="filteredStudents.length === 0" class="empty-state-card w-100 mx-auto" style="grid-column: 1 / -1;">
