@@ -22,6 +22,15 @@ export default [
     }
   },
   {
+    path: '/student/change-password',
+    name: 'StudentChangePassword',
+    component: () => import('./views/ChangePassword.vue'),
+    meta: {
+      requiresAuth: true,
+      role: 'student'
+    }
+  },
+  {
     path: '/student/reset-password',
     name: 'ResetPassword',
     component: () => import('./views/ResetPassword.vue'),

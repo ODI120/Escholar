@@ -4,10 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0"
 
 export const config = { verify_jwt: false }
 
+// Only the deployed frontend may call this function.
+const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || ''
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-service-auth',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Vary': 'Origin',
 }
 
 serve(async (req) => {

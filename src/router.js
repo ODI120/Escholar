@@ -32,39 +32,42 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for authentication and roles
+const loginPathForRole = (role) => (role === 'student' ? '/student/login' : '/login')
+
+// Navigation guard for authentication and roles.
+// This is a UI gate only — access is enforced by Postgres RLS policies.
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('supabase.auth.token')
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const routeRole = to.meta.role // 'admin' or 'student'
-
-  const userRole = localStorage.getItem('user_role') || 'admin' 
+  const userRole = localStorage.getItem('user_role') // no default: a missing role grants nothing
+  const mustChangePassword = localStorage.getItem('must_change_password') === 'true'
 
   if (requiresAuth && !isAuthenticated) {
-    if (to.path.startsWith('/student')) {
-      next('/student/login')
-    } else {
-      next('/login')
-    }
-  } else if ((to.path === '/login' || to.path === '/student/login') && isAuthenticated) {
-    // Prevent logged-in users from seeing login pages
-    if (userRole === 'student') {
-      next('/student/dashboard')
-    } else {
-      next('/dashboard')
-    }
-  } else if (requiresAuth && isAuthenticated && routeRole) {
-    // Role matching checking
-    if (routeRole === 'admin' && userRole !== 'admin') {
-      next('/student/dashboard') 
-    } else if (routeRole === 'student' && userRole !== 'student') {
-      next('/dashboard') 
-    } else {
-      next() // They belong here
-    }
-  } else {
-    next()
+    return next(to.path.startsWith('/student') ? '/student/login' : '/login')
   }
+
+  if ((to.path === '/login' || to.path === '/student/login') && isAuthenticated) {
+    // Prevent logged-in users from seeing login pages
+    if (userRole === 'student') return next('/student/dashboard')
+    if (userRole === 'admin') return next('/dashboard')
+    return next() // Unknown role: let them authenticate again
+  }
+
+  if (
+    isAuthenticated &&
+    userRole === 'student' &&
+    mustChangePassword &&
+    to.path !== '/student/change-password'
+  ) {
+    return next('/student/change-password')
+  }
+
+  if (requiresAuth && routeRole && userRole !== routeRole) {
+    return next(loginPathForRole(routeRole))
+  }
+
+  next()
 })
 
 export default router

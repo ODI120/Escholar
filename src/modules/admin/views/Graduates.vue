@@ -630,6 +630,15 @@ const handleSubmit = async () => {
       throw result.error
     }
 
+    if (result.temporary_password) {
+      alert(
+        `Beneficiary created.\n\nTemporary password for ${sanitizedData.email}:\n` +
+        `${result.temporary_password}\n\n` +
+        'Share it with the beneficiary through a secure channel. ' +
+        'They must set a new password at first login, and this password will not be shown again.'
+      )
+    }
+
     await loadStudents()
     closeModal()
   } catch (err) {

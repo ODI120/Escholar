@@ -5,10 +5,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0"
 // ✅ Disable automatic JWT verification — we'll handle admin check manually
 export const config = { verify_jwt: false }
 
+// Only the deployed frontend may call this function.
+const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || ''
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-service-auth',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Vary': 'Origin',
+}
+
+// Temporary password used when the admin does not supply one. It is returned
+// to the caller once and must be changed by the student on first login.
+const generateTemporaryPassword = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%'
+  const bytes = new Uint8Array(20)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
 }
 
 serve(async (req) => {
@@ -59,19 +72,22 @@ serve(async (req) => {
       .eq('user_id', caller.id)
       .single()
 
+    // Creating a beneficiary is an ordinary administrative action, so any role
+    // in `admins` is accepted here (unlike create-admin, which is restricted to
+    // super_admin).
     if (adminError || !adminRecord) {
-      console.error("ACCESS_DENIED: User is not an admin", caller.email)
+      console.error("ACCESS_DENIED: caller is not an admin")
       return new Response(JSON.stringify({ error: 'Unauthorized: Admin privileges required' }), { status: 403, headers: corsHeaders })
     }
 
-    console.log("PRO_LOG: Verified Admin session for", caller.email)
+    const temporaryPassword = password || generateTemporaryPassword()
 
     // ✅ Create student in Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: password || '000000',
+      password: temporaryPassword,
       email_confirm: true,
-      user_metadata: { role: targetRole },
+      user_metadata: { role: targetRole, must_change_password: true },
     })
     if (authError) {
       return new Response(JSON.stringify({ error: authError.message }), {
@@ -84,7 +100,7 @@ serve(async (req) => {
     const userId = authData.user.id
     const { error: dbError } = await supabaseAdmin
       .from('students')
-      .insert([{ ...profileData, id: userId, email }])
+      .insert([{ ...profileData, id: userId, email, must_change_password: true }])
 
     if (dbError) {
       return new Response(JSON.stringify({ error: `Auth created but DB failed: ${dbError.message}` }), {
@@ -93,7 +109,12 @@ serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ user: authData.user }), {
+    // The generated password is returned once so the admin can hand it to the
+    // student; it is never persisted anywhere in plaintext.
+    return new Response(JSON.stringify({
+      user: authData.user,
+      temporary_password: password ? undefined : temporaryPassword,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
