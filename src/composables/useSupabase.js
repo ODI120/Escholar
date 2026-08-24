@@ -419,15 +419,16 @@ export const useSupabaseStudents = () => {
         }
       }
 
-      // 2. Call the Edge Function — supabase client handles auth automatically
+      // 2. Call the Edge Function — supabase client handles auth automatically.
+      // No password is sent unless the admin supplied one: the function
+      // generates a random temporary password and returns it once.
       const payload = {
         ...student,
         phone_number: formattedPhone,
-        password: '000000',
+        must_change_password: true,
         user_metadata: { role: 'student' }
       }
 
-      console.log('Calling create-student Edge Function via raw fetch...')
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
@@ -456,11 +457,38 @@ export const useSupabaseStudents = () => {
         throw new Error(data.error)
       }
 
-      return data?.user
+      return { user: data?.user, temporary_password: data?.temporary_password || '' }
     } catch (err) {
       console.error('createStudent error:', err)
       throw err
     }
+  }
+
+  // Columns a client may write. Privileged columns (status, school_fees,
+  // verification status) are only forwarded for admin sessions, so a student
+  // cannot escalate privileges even if an RLS policy were misconfigured.
+  // RLS remains the authoritative check.
+  const STUDENT_SELF_COLUMNS = [
+    'full_name', 'email', 'admission_date', 'gender', 'phone_number',
+    'profile_picture', 'school', 'department', 'level', 'parent_name',
+    'parent_phone', 'account_number', 'account_name', 'bank_name',
+    'remarks', 'admission_letter_url', 'course_duration', 'years_remaining',
+    'updated_at'
+  ]
+  const STUDENT_ADMIN_ONLY_COLUMNS = ['status', 'school_fees']
+
+  const ACADEMIC_RECORD_SELF_COLUMNS = [
+    'semester', 'session', 'semester_number', 'gpa', 'evidence_url'
+  ]
+  const ACADEMIC_RECORD_ADMIN_ONLY_COLUMNS = ['status']
+
+  const isAdminSession = () => localStorage.getItem('user_role') === 'admin'
+
+  const pickColumns = (updates, selfColumns, adminOnlyColumns = []) => {
+    const allowed = isAdminSession() ? [...selfColumns, ...adminOnlyColumns] : selfColumns
+    return Object.fromEntries(
+      Object.entries(updates || {}).filter(([key]) => allowed.includes(key))
+    )
   }
 
   const updateStudent = async (id, updates) => {
@@ -471,9 +499,15 @@ export const useSupabaseStudents = () => {
       return { data: mockStudents[idx], error: null }
     }
     try {
+      const safeUpdates = pickColumns(updates, STUDENT_SELF_COLUMNS, STUDENT_ADMIN_ONLY_COLUMNS)
+
+      if (Object.keys(safeUpdates).length === 0) {
+        return { data: null, error: { message: 'No updatable fields were provided.' } }
+      }
+
       const { data, error } = await supabase
         .from('students')
-        .update(updates)
+        .update(safeUpdates)
         .eq('id', id)
         .select()
       
@@ -705,9 +739,19 @@ export const useSupabaseStudents = () => {
       return { data: updates, error: null }
     }
     try {
+      const safeUpdates = pickColumns(
+        updates,
+        ACADEMIC_RECORD_SELF_COLUMNS,
+        ACADEMIC_RECORD_ADMIN_ONLY_COLUMNS
+      )
+
+      if (Object.keys(safeUpdates).length === 0) {
+        return { data: null, error: { message: 'No updatable fields were provided.' } }
+      }
+
       const { data, error } = await supabase
         .from('academic_records')
-        .update(updates)
+        .update(safeUpdates)
         .eq('id', id)
         .select()
         
@@ -829,7 +873,6 @@ export const useSupabaseAdmins = () => {
     }
 
     try {
-      console.log('Calling create-admin Edge Function via raw fetch...')
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {

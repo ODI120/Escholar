@@ -57,10 +57,9 @@
 
           <!-- Step 2: Password Entry -->
           <div v-else key="password-step" class="auth-step-wrapper">
-            <!-- Personalized Greeting -->
+            <!-- Greeting -->
             <div class="user-welcome staggered-1">
-              <p class="greeting-pre">Welcome back,</p>
-              <h3 class="student-name">{{ studentData?.full_name?.split(' ')[0] }}!</h3>
+              <h3 class="student-name">Welcome back</h3>
               <p class="greeting-email">{{ studentData?.email }}</p>
             </div>
 
@@ -96,8 +95,6 @@
                 Forgot Password?
               </button>
             </div>
-            
-            <p class="micro-hint staggered-4">(Default: 000000)</p>
           </div>
         </Transition>
 
@@ -146,28 +143,13 @@
   const handleEmailCheck = async () => {
     if (!form.value.email) return
 
-    loading.value = true
+    // The account is verified by Supabase Auth on sign-in. Probing the
+    // `students` table beforehand leaks which emails are registered, and is
+    // rejected once the RLS policies in migrations/002_TIGHTEN_RLS.sql are
+    // applied.
     error.value = ''
-
-    try {
-      // 1. Verify if the email exists in the `students` table
-      const { data: student, error: profileError } = await supabase
-        .from('students')
-        .select('full_name, email')
-        .eq('email', form.value.email.trim())
-        .single()
-
-      if (profileError || !student) {
-        throw new Error('No account found with this email addresses.')
-      }
-
-      studentData.value = student
-      step.value = 2
-    } catch (err) {
-      error.value = err.message || 'Verification failed.'
-    } finally {
-      loading.value = false
-    }
+    studentData.value = { email: form.value.email.trim() }
+    step.value = 2
   }
 
   const handleForgotPassword = async () => {
@@ -226,7 +208,18 @@
       // Store student session
       localStorage.setItem('user_role', 'student')
       localStorage.setItem('student_session', JSON.stringify(studentProfile))
-      
+
+      const mustChangePassword =
+        studentProfile.must_change_password === true ||
+        authData.user?.user_metadata?.must_change_password === true
+
+      if (mustChangePassword) {
+        localStorage.setItem('must_change_password', 'true')
+        router.push('/student/change-password')
+        return
+      }
+
+      localStorage.removeItem('must_change_password')
       router.push('/student/dashboard')
 
     } catch (err) {
@@ -421,14 +414,6 @@
   text-decoration: underline;
 }
 
-.micro-hint {
-  text-align: right;
-  margin-top: 0.5rem;
-  color: #a0aec0;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
 .success-icon {
   width: 80px;
   height: 80px;
@@ -508,13 +493,6 @@
 .user-welcome {
   text-align: center;
   margin-bottom: 2.25rem;
-}
-
-.greeting-pre {
-  display: block;
-  font-size: 0.95rem;
-  color: #a0aec0;
-  font-weight: 500;
 }
 
 .student-name {

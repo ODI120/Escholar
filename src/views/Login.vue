@@ -56,17 +56,6 @@
         </button>
       </form>
 
-      <!-- Connection Status & Dev Tools -->
-      <div class="dev-tools staggered-6">
-        <button type="button" class="btn-link-stealth" @click="testConnection">
-          <i class="bi bi-activity"></i> Ping Server
-        </button>
-        <span class="divider">•</span>
-        <button type="button" class="btn-link-stealth" @click="checkAuthStatus">
-          <i class="bi bi-clipboard-check"></i> Auth Status
-        </button>
-      </div>
-
       <!-- Errors -->
       <div v-if="error" class="error-glass mt-3 staggered-6">
         <div class="error-icon"><i class="bi bi-exclamation-octagon"></i></div>
@@ -134,55 +123,6 @@ const handleLogin = async () => {
     error.value = 'An unexpected error occurred'
   } finally {
     loading.value = false
-  }
-}
-
-const testConnection = async () => {
-  try {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-  const response = await fetch(`${supabaseUrl}/rest/v1/admins?select=count`, {
-    method: 'GET',
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`
-    }
-  })
-
-    if (response.ok) {
-      alert('✅ Server heartbeat stabilized. Connection solid.')
-    } else {
-      alert(`❌ Connection failed: ${response.status} ${response.statusText}`)
-    }
-  } catch (err) {
-    alert(`❌ Connection error: ${err.message}`)
-  }
-}
-
-const checkAuthStatus = async () => {
-  try {
-    const { data, error } = await getCurrentUser()
-    const storedToken = localStorage.getItem('supabase.auth.token')
-    const { data: sessionData } = await supabase.auth.getSession()
-
-    let message = 'Auth Status Diagnostics:\n\n'
-    message += `Stored Token: ${storedToken ? '✅ Present' : '❌ Missing'}\n`
-    message += `Current User: ${data?.user ? '✅ Logged in' : '❌ Not logged in'}\n`
-    message += `Session: ${sessionData?.session ? '✅ Present' : '❌ Missing'}\n`
-
-    if (data?.user) {
-      message += `Email: ${data.user.email}\n`
-      message += `Confirmed: ${data.user.email_confirmed_at ? '✅ Yes' : '❌ No'}\n`
-    }
-
-    if (error) {
-      message += `Error: ${error.message}\n`
-    }
-
-    alert(message)
-  } catch (err) {
-    alert(`Diagnostics failure: ${err.message}`)
   }
 }
 </script>
@@ -403,37 +343,6 @@ const checkAuthStatus = async () => {
 .btn-premium.is-loading {
   opacity: 0.8;
   cursor: wait;
-}
-
-/* Dev Tools Link */
-.dev-tools {
-  margin-top: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.btn-link-stealth {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.8rem;
-  padding: 0;
-  cursor: pointer;
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.btn-link-stealth:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.divider {
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 0.6rem;
 }
 
 /* Error State UI */

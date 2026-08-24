@@ -67,12 +67,6 @@
         </button>
       </form>
 
-      <div class="text-center mt-3">
-        <button type="button" class="btn btn-link btn-sm" @click="testConnection">
-          Test Supabase Connection
-        </button>
-      </div>
-
       <div v-if="error" class="alert alert-danger mt-3 rounded-3">
         <strong>Signup Error:</strong> {{ error }}
         <br><small class="text-muted">Check your Supabase configuration if this persists.</small>
@@ -153,32 +147,6 @@ const handleLogout = async () => {
   await signOut()
   isAuthenticated.value = false
   router.push('/login')
-}
-
-const testConnection = async () => {
-  try {
-    // Test basic connection to Supabase
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-    // Test connection by hitting the admins table (with 0 results)
-    // This avoids hitting the root /rest/v1/ endpoint which Supabase is phasing out for anon key access.
-    const response = await fetch(`${supabaseUrl}/rest/v1/admins?select=count`, {
-      method: 'GET',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`
-      }
-    })
-
-    if (response.ok) {
-      alert('✅ Supabase connection successful!')
-    } else {
-      alert(`❌ Connection failed: ${response.status} ${response.statusText}`)
-    }
-  } catch (err) {
-    alert(`❌ Connection error: ${err.message}`)
-  }
 }
 </script>
 

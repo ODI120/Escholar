@@ -103,10 +103,23 @@ FROM recorded_semesters
 ORDER BY id, semester_number;
 
 -- ============================================
--- Add RLS policies if they don't exist
+-- Role-scoped RLS policies for academic_records
 -- ============================================
-CREATE POLICY "Allow all for academic_records" ON public.academic_records 
-FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.academic_records ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all for academic_records" ON public.academic_records;
+DROP POLICY IF EXISTS "Students read own academic_records" ON public.academic_records;
+DROP POLICY IF EXISTS "Admins manage academic_records" ON public.academic_records;
+
+-- Students may only read their own records
+CREATE POLICY "Students read own academic_records" ON public.academic_records
+FOR SELECT USING (student_id = auth.uid());
+
+-- Admins have full read/write access
+CREATE POLICY "Admins manage academic_records" ON public.academic_records
+FOR ALL
+USING (EXISTS (SELECT 1 FROM public.admins WHERE user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM public.admins WHERE user_id = auth.uid()));
 
 -- ============================================
 -- Test queries (uncomment to verify setup)

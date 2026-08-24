@@ -57,6 +57,18 @@ VITE_SUPABASE_URL=your-supabase-project-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
+`.env` is git-ignored and must never be committed. Only `.env.example` belongs in
+version control.
+
+> **Credential rotation required.** A `.env` containing the Supabase project URL
+> and anon key was previously committed to this repository. The anon key is
+> public-by-design in the browser bundle, but rotate it anyway (Supabase
+> dashboard > Settings > API > Rotate anon key), then update `.env` locally and
+> the environment variables in Netlify. Rotate the service role key as well if it
+> was ever placed in a committed file, and confirm RLS policies are applied (see
+> `migrations/002_TIGHTEN_RLS.sql`) since the anon key alone must not grant access
+> to other users' data.
+
 ### 4. Set up Database Schema
 
 Run the following SQL in your Supabase SQL editor:
@@ -97,12 +109,33 @@ CREATE TABLE payments (
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
--- Create policies for authenticated users
-CREATE POLICY "Allow all operations for authenticated users" ON students
-  FOR ALL USING (auth.role() = 'authenticated');
+-- Helper: is the current user an admin?
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.admins WHERE user_id = auth.uid());
+$$;
 
-CREATE POLICY "Allow all operations for authenticated users" ON payments
-  FOR ALL USING (auth.role() = 'authenticated');
+-- Students: a student may only see and edit their own row; admins have full access
+CREATE POLICY "Students read own row" ON students
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Students update own row" ON students
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Admins manage students" ON students
+  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- Payments: read-only for the owning student; admins have full access
+CREATE POLICY "Students read own payments" ON payments
+  FOR SELECT USING (student_id = auth.uid());
+
+CREATE POLICY "Admins manage payments" ON payments
+  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- Create indexes for better performance
 CREATE INDEX idx_students_status ON students(status);
@@ -120,13 +153,34 @@ In your Supabase dashboard:
 2. Configure your site URL and redirect URLs for your deployment
 3. Enable email confirmation if desired
 
-### 6. Run the Development Server
+### 6. Configure Edge Functions
+
+The `create-student` and `create-admin` functions require these secrets
+(`supabase secrets set NAME=value`):
+
+- `SERVICE_ROLE_KEY` — Supabase service role key
+- `ANON_KEY` — Supabase anon key
+- `ALLOWED_ORIGIN` — the exact deployed frontend origin allowed to call the
+  functions (e.g. `https://escholar.netlify.app`). CORS is restricted to this
+  origin; for local development set it to `http://localhost:5173`.
+
+Privileges:
+
+- `create-admin` requires the caller to be an admin with `role = 'super_admin'`.
+- `create-student` requires the caller to have any row in `admins`, since
+  enrolling beneficiaries is routine administrative work.
+- `create-student` uses the admin-supplied password when one is provided, and
+  otherwise generates a random temporary password that is returned once in the
+  response. New students are flagged `must_change_password` and are forced to set
+  a new password at first login.
+
+### 7. Run the Development Server
 
 ```bash
 npm run dev
 ```
 
-### 7. Build for Production
+### 8. Build for Production
 
 ```bash
 npm run build
