@@ -144,8 +144,9 @@
     if (!form.value.email) return
 
     // The account is verified by Supabase Auth on sign-in. Probing the
-    // `students` table beforehand leaks which emails are registered and is
-    // no longer possible under the tightened RLS policies.
+    // `students` table beforehand leaks which emails are registered, and is
+    // rejected once the RLS policies in migrations/002_TIGHTEN_RLS.sql are
+    // applied.
     error.value = ''
     studentData.value = { email: form.value.email.trim() }
     step.value = 2
